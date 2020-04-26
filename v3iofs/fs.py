@@ -36,6 +36,7 @@ class V3ioFS(AbstractFileSystem):
         Passed to fsspec.AbstractFileSystem
     """
     def __init__(self, v3io_api, v3io_access_key=None, **kw):
+        # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._v3io_api = v3io_api
         self._v3io_access_key = \
