@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
+from datetime import datetime, timezone
 from http import HTTPStatus
+from os import environ
 
 from fsspec.registry import registry
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
+
+from .path import unslash, split_container
 
 
 class V3ioFS(AbstractFileSystem):
@@ -34,6 +37,9 @@ class V3ioFS(AbstractFileSystem):
     """
     def __init__(self, v3io_api, v3io_access_key=None, **kw):
         super().__init__(**kw)
+        self._v3io_api = v3io_api
+        self._v3io_access_key = \
+            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
         self._client = Client(
             endpoint=v3io_api,
             access_key=v3io_access_key,
@@ -42,7 +48,7 @@ class V3ioFS(AbstractFileSystem):
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
-        container, path = split_path(path)
+        container, path = split_container(path)
 
         if not container:
             return self._list_containers(detail)
@@ -75,7 +81,7 @@ class V3ioFS(AbstractFileSystem):
         ...  # FIXME
 
     def _rm(self, path):
-        container, path = split_path(path)
+        container, path = split_container(path)
         if not container:
             raise ValueError(f'bad path: {path:r}')
 
@@ -88,33 +94,11 @@ class V3ioFS(AbstractFileSystem):
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
             raise ValueError('only truncate touch supported')
-        container, path = split_path(path)
+        container, path = split_container(path)
         self._client.put_object(
             container, path,
             raise_for_status=[HTTPStatus.OK],
         )
-
-
-def split_path(path):
-    if not path:
-        raise ValueError('empty path')
-
-    if path == '/':
-        return '', ''
-
-    if path[0] == '/':
-        path = path[1:]
-
-    if '/' not in path:
-        return path, ''  # container
-
-    return path.split('/', maxsplit=1)
-
-
-def unslash(s):
-    if not s or s[-1] != '/':
-        return s
-    return s[:-1]
 
 
 def container_path(container):
@@ -167,6 +151,7 @@ def parse_time(creation_date):
     # '2020-03-26T09:42:57.71Z'
     i = creation_date.rfind('+')  # If not found will be -1, good for Z
     dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    dt = dt.replace(tzinfo=timezone.utc)
     return dt.timestamp()
 
 
