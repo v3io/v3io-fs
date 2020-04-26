@@ -36,14 +36,16 @@ def test_ls(fs: V3ioFS):
 
 
 def test_rm(fs: V3ioFS, tmp_obj):
-    fs.rm(tmp_obj)
-    out = fs.ls(dirname(tmp_obj), detail=False)
-    assert tmp_obj not in out, 'not deleted'
+    path = tmp_obj.path
+    fs.rm(path)
+    out = fs.ls(dirname(path), detail=False)
+    assert path not in out, 'not deleted'
 
 
 def test_touch(fs: V3ioFS, tmp_obj):
-    fs.touch(tmp_obj)
-    container, path = split_container(tmp_obj)
+    path = tmp_obj.path
+    fs.touch(path)
+    container, path = split_container(path)
     resp = fs._client.get_object(container, path)
     assert resp.body == b'', 'not truncated'
 

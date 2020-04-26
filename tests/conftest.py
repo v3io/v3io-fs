@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import namedtuple
 from datetime import datetime
 from getpass import getuser
 from os import environ
@@ -23,6 +24,9 @@ from v3iofs import V3ioFS
 host = environ.get('V3IO_API')
 access_key = environ.get('V3IO_ACCESS_KEY')
 container = 'bigdata'  # TODO: configure
+
+
+Obj = namedtuple('Obj', 'path data')
 
 
 @pytest.fixture
@@ -38,8 +42,9 @@ def tmp_obj():
     client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
 
     path = f'{user}-test-{ts}'
-    client.put_object(container, path, body=b'hello')
+    body = f'test data for {user} at {ts}'
+    client.put_object(container, path, body=body.encode())
 
-    yield f'/{container}/{path}'
+    yield Obj(f'/{container}/{path}', body)
 
     client.delete_object(container, path)
