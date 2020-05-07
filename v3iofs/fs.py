@@ -17,7 +17,6 @@ from http import HTTPStatus
 from os import environ
 from urllib.parse import urlparse
 
-from fsspec.registry import known_implementations
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
 
@@ -185,10 +184,3 @@ def split_auth(url):
     _, key = auth.split(':', 1)
     u = u._replace(netloc=netloc)
     return (u.geturl(), key)
-
-
-# Register v3io protocol
-if V3ioFS.protocol not in known_implementations:
-    known_implementations[V3ioFS.protocol] = {
-        'class': 'v3iofs.V3ioFS',
-    }

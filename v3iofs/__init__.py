@@ -19,7 +19,18 @@ __all__ = [
     'V3ioFile',
 ]
 
-from .fs import V3ioFS  # noqa: F401
+from fsspec.registry import known_implementations
+
 from .file import V3ioFile  # noqa: F401
+from .fs import V3ioFS  # noqa: F401
 
 __version__ = '0.1.0'
+
+# Register v3io protocol
+# (https://github.com/intake/filesystem_spec/issues/293)
+if V3ioFS.protocol not in known_implementations:
+    known_implementations[V3ioFS.protocol] = {
+        'class': 'v3iofs.V3ioFS',
+    }
+
+del known_implementations  # clear the module namespace
