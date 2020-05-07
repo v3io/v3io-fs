@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 def version():
     with open('v3iofs/__init__.py') as fp:
         for line in fp:
-            if '__version__' in line:
+            if line.startswith('__version__'):
                 _, version = line.split('=')
                 return version.replace("'", '').strip()
 
