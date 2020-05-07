@@ -61,3 +61,5 @@ class V3ioFile(AbstractBufferedFile):
             },
         )
         urlopen(req, context=no_validate_ctx)
+        # No need to clear self.buffer, fsspec does that
+        return True

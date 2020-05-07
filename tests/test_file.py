@@ -12,10 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from v3iofs import V3ioFile  # noqa
+from random import choices
 
-import pytest
+from v3iofs import V3ioFile, V3ioFS
 
 
-def test_file(fs):
-    pytest.skip('FIXME')
+def test_fetch_range(fs: V3ioFS, tmp_obj):
+    v3f = V3ioFile(fs, tmp_obj.path)
+    start, end = 3, len(tmp_obj.data) - 3
+    data = v3f._fetch_range(start, end)
+    assert tmp_obj.path[start:end+1] == data, 'bad data'
+
+
+def test_upload_chunk(fs: V3ioFS, tmp_obj):
+    v3f = V3ioFile(fs, tmp_obj.path, 'ab')
+    chunk = bytes(choices(range(128), k=17))
+    v3f._upload_chunk(chunk)
+
+    expected = tmp_obj.data.encode() + chunk
+
+    with fs.open(tmp_obj.path, 'rb') as fp:
+        data = fp.read()
+
+    assert expected == data, 'bad data'
