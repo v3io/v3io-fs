@@ -15,13 +15,16 @@
 
 import dask.bag as db
 
-from conftest import host  # TODO: access_key
+from conftest import access_key, host
 
 data = 'In god we trust; all others must bring data.'
 
 
 def test_dask(tmp_obj):
     uri = f'v3io://{host}/{tmp_obj.path}'
-    file = db.read_text(uri)
+    storage_options = {
+        'V3IO_ACCESS_KEY': access_key
+    }
+    file = db.read_text(uri, storage_options=storage_options)
     data, = file.compute()
     assert tmp_obj.data == data, 'bad data'

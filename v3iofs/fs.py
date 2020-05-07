@@ -15,12 +15,13 @@
 from datetime import datetime, timezone
 from http import HTTPStatus
 from os import environ
+from urllib.parse import urlparse
 
-from fsspec.registry import registry
+from fsspec.registry import known_implementations
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
 
-from .path import unslash, split_container
+from .path import split_container, unslash
 
 
 class V3ioFS(AbstractFileSystem):
@@ -29,21 +30,23 @@ class V3ioFS(AbstractFileSystem):
     Parameters
     ----------
     v3io_api: str
-        API host name
+        API host name (or V3IO_API environment)
     v3io_access_key: str
-        v3io access key (if not will use V3IO_ACCESS_KEY from environment)
+        v3io access key (or V3IO_ACCESS_KEY from environment)
     **kw:
         Passed to fsspec.AbstractFileSystem
     """
-    def __init__(self, v3io_api, v3io_access_key=None, **kw):
+
+    protocol = 'v3io'
+
+    def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._v3io_api = v3io_api
-        self._v3io_access_key = \
-            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
+        self._v3io_api, self._v3io_access_key = \
+            self._parse_api(v3io_api, v3io_access_key)
         self._client = Client(
-            endpoint=v3io_api,
-            access_key=v3io_access_key,
+            endpoint=self._v3io_api,
+            access_key=self._v3io_access_key,
             transport_kind='requests',
         )
 
@@ -70,6 +73,15 @@ class V3ioFS(AbstractFileSystem):
         files = [fn(container, o) for o in objects]
 
         return dirs + files
+
+    def _parse_api(self, v3io_api, v3io_access_key):
+        v3io_api = v3io_api or environ.get('V3IO_API')
+        url, auth = split_auth(v3io_api)
+        if auth:
+            return url, auth
+
+        v3io_access_key = v3io_access_key or environ.get('V3IO_ACCESS_KEY')
+        return v3io_api, v3io_access_key
 
     def _list_containers(self, detail):
         resp = self._client.get_containers(
@@ -156,6 +168,27 @@ def parse_time(creation_date):
     return dt.timestamp()
 
 
-# TODO: Require explicit manual regisration?
-if 'v3io' not in registry:
-    registry['v3io'] = V3ioFS
+def split_auth(url):
+    """
+    >>> split_auth('v3io://api_key:s3cr3t@domain.company.com')
+    ('v3io://domain.company.com', 's3cr3t')
+    >>> split_auth('v3io://domain.company.com')
+    ('v3io://domain.company.com', '')
+    """
+    u = urlparse(url)
+    if '@' not in u.netloc:
+        return (url, '')
+
+    auth, netloc = u.netloc.split('@', 1)
+    if ':' not in auth:
+        raise ValueError('missing : in auth')
+    _, key = auth.split(':', 1)
+    u = u._replace(netloc=netloc)
+    return (u.geturl(), key)
+
+
+# Register v3io protocol
+if V3ioFS.protocol not in known_implementations:
+    known_implementations[V3ioFS.protocol] = {
+        'class': 'v3iofs.V3ioFS',
+    }
