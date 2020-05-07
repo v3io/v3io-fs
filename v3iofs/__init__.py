@@ -24,7 +24,7 @@ from fsspec.registry import known_implementations
 from .file import V3ioFile  # noqa: F401
 from .fs import V3ioFS  # noqa: F401
 
-__version__ = '0.1.0'
+__version__ = '0.1.0a1'
 
 # Register v3io protocol
 # (https://github.com/intake/filesystem_spec/issues/293)

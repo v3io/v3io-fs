@@ -6,7 +6,7 @@
 
 An [fsspec][fsspec] driver for [v3io][v3io].
 
-**THIS IS WORK IN PROGRESS, DO NOT USE**
+**THIS IS ALPHA QUALITY WORK IN PROGRESS, DO NOT USE**
 
 ## Example
 
