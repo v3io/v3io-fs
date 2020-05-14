@@ -21,21 +21,25 @@ An [fsspec][fsspec] driver for [v3io][v3io].
 ```python
 >>> from v3iofs import V3ioFS
 >>> from dask import bag
->>> url = 'v3io://api.app.yh48.iguazio-cd2.com/container/path'
 
-# Use V3IO_ACCESS_KEY from environment
+# Use V3IO_ACCESS_KEY & V3IO_API from environment
+>>> url = 'v3io://container/path'
 >>> file = bag.read_text(url)
 >>> data, _ = file.compute()
 
 # Pass key in storage_options
->>> file = bag.read_text(url, storage_options={'v3io_access_key': 's3cr3t'})
->>> data, _ = file.compute()
-
-# Pass key in URL
->>> url = 'v3io://api_key:s3cr3t@api.app.yh48.iguazio-cd2.com/container/path'
->>> file = bag.read_text(url)
+>>> storage_options={
+...     'v3io_api': 'webapi.app.iguazio.com',
+...     'v3io_access_key': 's3cr3t',
+... }
+>>> file = bag.read_text(url, storage_options=storage_options)
 >>> data, _ = file.compute()
 ```
+
+## Development
+
+Run `make test` to run the tests. You need to set `V3IO_ACCESS_KEY` and
+`V3IO_API` environment variables first.
 
 
 [fsspec]: (https://filesystem-spec.readthedocs.io)

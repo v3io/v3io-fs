@@ -18,7 +18,7 @@ from os.path import dirname
 import pytest
 
 from v3iofs import V3ioFS
-from v3iofs.fs import parse_time, split_auth
+from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
 container = 'bigdata'  # TODO: Configuration
@@ -75,33 +75,4 @@ def test_parse_time(value, expected, raises):
         return
 
     out = parse_time(value)
-    assert expected == out
-
-
-split_auth_cases = [
-    (
-        'v3io://api_key:s3cr3t@domain.company.com',
-        ('v3io://domain.company.com', 's3cr3t'),
-        False,
-    ),
-    (
-        'v3io://domain.company.com',
-        ('v3io://domain.company.com', ''),
-        False,
-    ),
-    (
-        'v3io://s3cr3t@domain.company.com',
-        ('v3io://domain.company.com', ''),
-        True,
-    ),
-]
-
-
-@pytest.mark.parametrize('url, expected, raises', split_auth_cases)
-def test_split_auth(url, expected, raises):
-    if raises:
-        with pytest.raises(ValueError):
-            split_auth(url)
-        return
-    out = split_auth(url)
     assert expected == out

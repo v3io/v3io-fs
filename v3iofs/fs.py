@@ -42,8 +42,10 @@ class V3ioFS(AbstractFileSystem):
     def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._v3io_api, self._v3io_access_key = \
-            self._parse_api(v3io_api, v3io_access_key)
+        self._v3io_api = v3io_api or environ.get('V3IO_API')
+        self._v3io_access_key = v3io_access_key or \
+            environ.get('V3IO_ACCESS_KEY')
+
         self._client = Client(
             endpoint=self._v3io_api,
             access_key=self._v3io_access_key,
@@ -73,15 +75,6 @@ class V3ioFS(AbstractFileSystem):
         files = [fn(container, o) for o in objects]
 
         return dirs + files
-
-    def _parse_api(self, v3io_api, v3io_access_key):
-        v3io_api = v3io_api or environ.get('V3IO_API')
-        url, auth = split_auth(v3io_api)
-        if auth:
-            return url, auth
-
-        v3io_access_key = v3io_access_key or environ.get('V3IO_ACCESS_KEY')
-        return v3io_api, v3io_access_key
 
     def _list_containers(self, detail):
         resp = self._client.get_containers(
