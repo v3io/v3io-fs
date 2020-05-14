@@ -42,8 +42,8 @@ def tmp_obj():
     client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
 
     path = f'{user}-test-{ts}'
-    body = f'test data for {user} at {ts}'
-    client.put_object(container, path, body=body.encode())
+    body = f'test data for {user} at {ts}'.encode()
+    client.put_object(container, path, body=body)
 
     yield Obj(f'/{container}/{path}', body)
 

@@ -28,7 +28,7 @@ class V3ioFile(AbstractBufferedFile):
 
         resp = client.get_object(
             container, path, offset=start, num_bytes=nbytes,
-            raise_for_status=[HTTPStatus.PARTIAL_CONTENT])
+            raise_for_status=[HTTPStatus.PARTIAL_CONTENT, HTTPStatus.OK])
 
         return resp.body
 

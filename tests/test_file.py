@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from random import choices
-
 from v3iofs import V3ioFile, V3ioFS
 
 
@@ -21,16 +19,17 @@ def test_fetch_range(fs: V3ioFS, tmp_obj):
     v3f = V3ioFile(fs, tmp_obj.path)
     start, end = 3, len(tmp_obj.data) - 3
     data = v3f._fetch_range(start, end)
-    expected = tmp_obj.data[start:end].encode('utf-8')
+    expected = tmp_obj.data[start:end]
     assert expected == data, 'bad data'
 
 
 def test_upload_chunk(fs: V3ioFS, tmp_obj):
     v3f = V3ioFile(fs, tmp_obj.path, 'ab')
-    chunk = bytes(choices(range(128), k=17))
-    v3f._upload_chunk(chunk)
+    chunk = b'::chunk of data'
+    v3f.buffer.write(chunk)
+    v3f._upload_chunk()
 
-    expected = tmp_obj.data.encode() + chunk
+    expected = tmp_obj.data + chunk
 
     with fs.open(tmp_obj.path, 'rb') as fp:
         data = fp.read()
