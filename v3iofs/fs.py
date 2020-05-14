@@ -21,6 +21,7 @@ from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
 
 from .path import split_container, unslash
+from .file import V3ioFile
 
 
 class V3ioFS(AbstractFileSystem):
@@ -111,6 +112,18 @@ class V3ioFS(AbstractFileSystem):
             container, path,
             raise_for_status=[HTTPStatus.OK],
         )
+
+    def _open(
+        self, path, mode='rb', block_size=None, autocommit=True,
+            cache_options=None, **kw):
+        return V3ioFile(
+            fs=self,
+            path=path,
+            mode=mode,
+            block_size=block_size,
+            autocommit=autocommit,
+            cache_options=cache_options,
+            **kw)
 
 
 def container_path(container):

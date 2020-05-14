@@ -12,31 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ssl
-from urllib.request import Request, urlopen
+from http import HTTPStatus
 
 from fsspec.spec import AbstractBufferedFile
+from v3io.dataplane import Client
 
-# Ignore certs
-no_validate_ctx = ssl.create_default_context()
-no_validate_ctx.check_hostname = False
-no_validate_ctx.verify_mode = ssl.CERT_NONE
-
-# v3io-py don't support range requests so we're using urllib
-# (https://github.com/v3io/v3io-py/issues/16)
+from .path import split_container
 
 
 class V3ioFile(AbstractBufferedFile):
     def _fetch_range(self, start, end):
-        req = Request(
-            url=f'{self.fs._v3io_api}/{self.path}',
-            headers={
-                'Range': f'bytes={start}-{end}',
-                'X-v3io-session-key': self.fs._v3io_access_key,
-            },
-        )
-        with urlopen(req, context=no_validate_ctx) as fp:
-            return fp.read()
+        client: Client = self.fs._client
+        container, path = split_container(self.path)
+        nbytes = end - start
+
+        resp = client.get_object(
+            container, path, offset=start, num_bytes=nbytes,
+            raise_for_status=[HTTPStatus.PARTIAL_CONTENT])
+
+        return resp.body
 
     def _upload_chunk(self, final=False):
         """ Write one part of a multi-block file upload
@@ -47,19 +41,16 @@ class V3ioFile(AbstractBufferedFile):
             This is the last block, so should complete file, if
             self.autocommit is True.
         """
-        data = self.buffer.getvalue()
-        if not data:
+        body = self.buffer.getvalue()
+        if not body:
             return
-        req = Request(
-            method='POST',
-            data=data,
-            url=f'{self.fs._v3io_api}/{self.path}',
-            headers={
-                'Range': '-1',
-                'Content-Length': len(data),
-                'X-v3io-session-key': self.fs._v3io_access_key,
-            },
+
+        client: Client = self.fs._client
+        container, path = split_container(self.path)
+        client.put_object(
+            container, path, body=body, append=True,
+            raise_for_status=[HTTPStatus.OK],
         )
-        urlopen(req, context=no_validate_ctx)
+
         # No need to clear self.buffer, fsspec does that
         return True

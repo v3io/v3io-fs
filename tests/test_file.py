@@ -21,7 +21,8 @@ def test_fetch_range(fs: V3ioFS, tmp_obj):
     v3f = V3ioFile(fs, tmp_obj.path)
     start, end = 3, len(tmp_obj.data) - 3
     data = v3f._fetch_range(start, end)
-    assert tmp_obj.path[start:end+1] == data, 'bad data'
+    expected = tmp_obj.data[start:end].encode('utf-8')
+    assert expected == data, 'bad data'
 
 
 def test_upload_chunk(fs: V3ioFS, tmp_obj):
