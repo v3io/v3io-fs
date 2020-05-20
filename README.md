@@ -38,8 +38,22 @@ An [fsspec][fsspec] driver for [v3io][v3io].
 
 ## Development
 
-Run `make test` to run the tests. You need to set `V3IO_ACCESS_KEY` and
-`V3IO_API` environment variables first.
+
+### Testing
+
+You need to set `V3IO_ACCESS_KEY` and `V3IO_API` environment variables.
+Then run `make test` to run the tests.
+
+
+### Environment
+
+Deployment requirements are in `requirements.txt` and development requirements
+are in `dev-requirements.txt`.
+
+```
+$ python -m venv venv
+$ ./venv/bin/python -m pip install -r requirements.txt -r dev-requirements.txt
+```
 
 
 [fsspec]: (https://filesystem-spec.readthedocs.io)
