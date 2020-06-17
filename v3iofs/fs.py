@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import logging
+
 from datetime import datetime, timezone
 from http import HTTPStatus
 from os import environ
@@ -23,6 +26,8 @@ import sys
 
 from .path import split_container, unslash
 from .file import V3ioFile
+
+logger = logging.getLogger(__name__)
 
 
 class V3ioFS(AbstractFileSystem):
@@ -57,7 +62,7 @@ class V3ioFS(AbstractFileSystem):
         pathlist = []
         for c in contents:
             data = {}
-            data['name'] = c['name']
+            data['name'] = c['name'].lstrip("/")
             if c['size'] is not None:
                 data['type'] = 'file'
                 data['size'] = c['size']
@@ -69,8 +74,8 @@ class V3ioFS(AbstractFileSystem):
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
+        
         container, path = split_container(path)
-
         if container == "":
             return self._list_containers(detail)
         elif container and path == "":
@@ -103,6 +108,7 @@ class V3ioFS(AbstractFileSystem):
             if not pathlist:
                 raise FileNotFoundError(f"Nothing found in {path}")
         except:
+            logger.debug("Nothing found in container.  Moving to top level container")
             pathlist = []
             dirname, _, filename = path.rpartition("/")
             resp = self._client.get_container_contents(
@@ -113,7 +119,7 @@ class V3ioFS(AbstractFileSystem):
             fn = object_info if detail else object_path
             tempfiles = [object_info(container, o) for o in objects]
             fullpath = f"/{container}/{path}"
-            print(f"fullpath:  {fullpath}")
+            logger.debug(f"fullpath:  {fullpath}")
             for f in tempfiles:
                 if f['name'] == fullpath:
                     pathlist.append(f)
@@ -169,12 +175,7 @@ class V3ioFS(AbstractFileSystem):
         dict with keys: name (full path in the FS), size (in bytes), type (file,
         directory, or something else) and other FS-specific keys.
         """
-        path = self._strip_protocol(path)
-#         out = self.ls(self._parent(path), detail=True, **kwargs)
-#         out = [o for o in out if o["name"].rstrip("/") == path]
-#         if out:
-#             return out[0]
-        print(path)
+
         out = self.ls(path, detail=True, **kwargs)
         path = path.rstrip("/")
         out1 = [o for o in out if o["name"].rstrip("/") == path]
@@ -186,6 +187,39 @@ class V3ioFS(AbstractFileSystem):
             return {"name": path, "size": 0, "type": "directory"}
         else:
             raise FileNotFoundError(path)
+
+    def find(self, path, maxdepth=None, withdirs=False, **kwargs):
+        """List all files below path.
+        Like posix ``find`` command without conditions
+        Parameters
+        ----------
+        path : str
+        maxdepth: int or None
+            If not None, the maximum number of levels to descend
+        withdirs: bool
+            Whether to include directory paths in the output. This is True
+            when used by glob, but users usually only want files.
+        kwargs are passed to ``ls``.
+        """
+        # TODO: allow equivalent of -name parameter
+        path = self._strip_protocol(path)
+        out = dict()
+        detail = kwargs.pop("detail", False)
+        for path, dirs, files in self.walk(path, maxdepth, detail=True, **kwargs):
+            if withdirs:
+                files.update(dirs)
+            out.update({info["name"]: info for name, info in files.items()})
+        if self.isfile(path) and path not in out:
+            # walk works on directories, but find should also return [path]
+            # when path happens to be a file
+            out[path] = {}
+        names = sorted(out)
+        if not detail:
+            return names
+        else:
+            return {name: out[name] for name in names}
+
+    
     def _open(
         self, path, mode='rb', block_size=None, autocommit=True,
             cache_options=None, **kw):
@@ -212,7 +246,7 @@ def container_info(container):
 
 def prefix_path(container_name, prefix):
     if not isinstance(prefix, str):
-        prefix = prefix.prefix
+        prefix = prefix.prefix.lstrip()
     # prefix already have a leading /
     return unslash(f'/{container_name}/{prefix}')
 
