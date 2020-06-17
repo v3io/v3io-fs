@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
+import sys
 
 from .path import split_container, unslash
 from .file import V3ioFile
@@ -52,29 +53,78 @@ class V3ioFS(AbstractFileSystem):
             transport_kind='requests',
         )
 
+    def _details(self, contents, **kwargs):
+        pathlist = []
+        for c in contents:
+            data = {}
+            data['name'] = c['name']
+            if c['size'] is not None:
+                data['type'] = 'file'
+                data['size'] = c['size']
+            else:
+                data['type'] = 'directory'
+                data['size']= 0
+            pathlist.append(data)
+        return pathlist
+
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
         container, path = split_container(path)
 
-        if not container:
+        if container == "":
             return self._list_containers(detail)
+        elif container and path == "":
+            containers = self._list_containers(detail=True)
+            containers = [c['name'] for c in containers]
+            if not container in containers:
+                raise FileNotFoundError("Container not found!!")
+        try:
+            resp = self._client.get_container_contents(
+                container=container,
+                path=path,
+                get_all_attributes=True,
+                raise_for_status=[HTTPStatus.OK],
+            )
 
-        resp = self._client.get_container_contents(
-            container=container,
-            path=path,
-            get_all_attributes=True,
-            raise_for_status=[HTTPStatus.OK],
-        )
+            # Try to fetch a list of directories, else return empty
+            try:
+                prefixes = resp.output.common_prefixes
+                dirs = [prefix_info(container, p) for p in prefixes]
+            except:
+                dirs = []
 
-        prefixes = resp.output.common_prefixes  # directories
-        fn = prefix_info if detail else prefix_path
-        dirs = [fn(container, p) for p in prefixes]
-
-        objects = resp.output.contents  # files
-        fn = object_info if detail else object_path
-        files = [fn(container, o) for o in objects]
-
-        return dirs + files
+            # Try to fetch a list of files, else return empty
+            try:
+                objects = resp.output.contents
+                files = [object_info(container, o) for o in objects]
+            except:
+                files = []
+            pathlist = dirs + files
+            if not pathlist:
+                raise FileNotFoundError(f"Nothing found in {path}")
+        except:
+            pathlist = []
+            dirname, _, filename = path.rpartition("/")
+            resp = self._client.get_container_contents(
+                container=container,
+                path=dirname,
+                )
+            objects = resp.output.contents
+            fn = object_info if detail else object_path
+            tempfiles = [object_info(container, o) for o in objects]
+            fullpath = f"/{container}/{path}"
+            print(f"fullpath:  {fullpath}")
+            for f in tempfiles:
+                if f['name'] == fullpath:
+                    pathlist.append(f)
+            if not pathlist:
+                raise FileNotFoundError("File or directory not found!!")
+        pathlist = self._details(pathlist)
+        if detail:
+            return pathlist
+        else:
+            pathlist = [f['name'] for f in files]
+        return pathlist
 
     def _list_containers(self, detail):
         resp = self._client.get_containers(
@@ -106,6 +156,36 @@ class V3ioFS(AbstractFileSystem):
             raise_for_status=[HTTPStatus.OK],
         )
 
+    def info(self, path, **kwargs):
+        """Give details of entry at path
+        Returns a single dictionary, with exactly the same information as ``ls``
+        would with ``detail=True``.
+        The default implementation should calls ls and could be overridden by a
+        shortcut. kwargs are passed on to ```ls()``.
+        Some file systems might not be able to measure the file's size, in
+        which case, the returned dict will include ``'size': None``.
+        Returns
+        -------
+        dict with keys: name (full path in the FS), size (in bytes), type (file,
+        directory, or something else) and other FS-specific keys.
+        """
+        path = self._strip_protocol(path)
+#         out = self.ls(self._parent(path), detail=True, **kwargs)
+#         out = [o for o in out if o["name"].rstrip("/") == path]
+#         if out:
+#             return out[0]
+        print(path)
+        out = self.ls(path, detail=True, **kwargs)
+        path = path.rstrip("/")
+        out1 = [o for o in out if o["name"].rstrip("/") == path]
+        if len(out1) == 1:
+            if "size" not in out1[0]:
+                out1[0]["size"] = None
+            return out1[0]
+        elif len(out1) > 1 or out:
+            return {"name": path, "size": 0, "type": "directory"}
+        else:
+            raise FileNotFoundError(path)
     def _open(
         self, path, mode='rb', block_size=None, autocommit=True,
             cache_options=None, **kw):
@@ -127,7 +207,6 @@ def container_info(container):
     return {
         'name': container.name,
         'size': None,
-        'created': parse_time(container.creation_date),
     }
 
 
@@ -135,7 +214,7 @@ def prefix_path(container_name, prefix):
     if not isinstance(prefix, str):
         prefix = prefix.prefix
     # prefix already have a leading /
-    return unslash(f'/{container_name}{prefix}')
+    return unslash(f'/{container_name}/{prefix}')
 
 
 def prefix_info(container_name, prefix):
@@ -155,12 +234,6 @@ def info_of(container_name, obj, name_key):
     return {
         'name': prefix_path(container_name, getattr(obj, name_key)),
         'size': getattr(obj, 'size', None),
-        'created': parse_time(obj.creating_time),
-        'mtime': parse_time(obj.last_modified),
-        'atime': parse_time(obj.access_time),
-        'mode': int(obj.mode[1:], base=8),  # '040755'
-        'gid': int(obj.gid, 16),
-        'uid': int(obj.uid, 16),
     }
 
 
