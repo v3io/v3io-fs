@@ -27,5 +27,10 @@ from .file import V3ioFile  # noqa: F401
 from .fs import V3ioFS  # noqa: F401
 
 # TODO: Not sure about clobber=True
-fsspec.register_implementation('v3io', V3ioFS, clobber=True)
-del fsspec  # clear the module namespace
+try:
+    fsspec.register_implementation('v3io', V3ioFS, clobber=True)
+    del fsspec  # clear the module namespace
+except:
+    from fsspec.registry import known_implementations
+    known_implementations["v3io"] = {"class": "v3iofs.V3ioFS",
+                                    'err': 'Please install v3iofs to use the v3io fileysstem class'}
