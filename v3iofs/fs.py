@@ -78,7 +78,7 @@ class V3ioFS(AbstractFileSystem):
         container, path = split_container(path)
         if container == "":
             return self._list_containers(detail)
-        elif container and path == "":
+        else:
             containers = self._list_containers(
                 detail=True
                 )
