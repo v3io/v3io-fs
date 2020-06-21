@@ -22,7 +22,6 @@ from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
-import sys
 
 from .path import split_container, unslash
 from .file import V3ioFile
@@ -49,7 +48,9 @@ class V3ioFS(AbstractFileSystem):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._v3io_api = v3io_api or environ.get("V3IO_API")
-        self._v3io_access_key = v3io_access_key or environ.get("V3IO_ACCESS_KEY")
+        self._v3io_access_key = v3io_access_key or environ.get(
+            "V3IO_ACCESS_KEY"
+            )
 
         self._client = Client(
             endpoint=self._v3io_api,
@@ -78,9 +79,11 @@ class V3ioFS(AbstractFileSystem):
         if container == "":
             return self._list_containers(detail)
         elif container and path == "":
-            containers = self._list_containers(detail=True)
+            containers = self._list_containers(
+                detail=True
+                )
             containers = [c["name"] for c in containers]
-            if not container in containers:
+            if container not in containers:
                 raise FileNotFoundError("Container not found!!")
         try:
             resp = self._client.get_container_contents(
@@ -107,7 +110,9 @@ class V3ioFS(AbstractFileSystem):
             if not pathlist:
                 raise FileNotFoundError(f"Nothing found in {path}")
         except:
-            logger.debug("Nothing found in container.  Moving to top level container")
+            logger.debug(
+                "Nothing found in container.  Moving to top level container"
+                )
             pathlist = []
             dirname, _, filename = path.rpartition("/")
             resp = self._client.get_container_contents(
@@ -144,7 +149,9 @@ class V3ioFS(AbstractFileSystem):
             raise ValueError(f"bad path: {path:r}")
 
         self._client.delete_object(
-            container=container, path=path, raise_for_status=[HTTPStatus.NO_CONTENT],
+            container=container, path=path, raise_for_status=[
+                HTTPStatus.NO_CONTENT
+                ],
         )
 
     def touch(self, path, truncate=True, **kwargs):
@@ -157,16 +164,16 @@ class V3ioFS(AbstractFileSystem):
 
     def info(self, path, **kwargs):
         """Give details of entry at path
-        Returns a single dictionary, with exactly the same information as ``ls``
-        would with ``detail=True``.
+        Returns a single dictionary, with exactly the same information as 
+        ``ls`` would with ``detail=True``.
         The default implementation should calls ls and could be overridden by a
         shortcut. kwargs are passed on to ```ls()``.
         Some file systems might not be able to measure the file's size, in
         which case, the returned dict will include ``'size': None``.
         Returns
         -------
-        dict with keys: name (full path in the FS), size (in bytes), type (file,
-        directory, or something else) and other FS-specific keys.
+        dict with keys: name (full path in the FS), size (in bytes), 
+        type (file, directory, or something else) and other FS-specific keys.
         """
 
         out = self.ls(path, detail=True, **kwargs)
@@ -198,7 +205,9 @@ class V3ioFS(AbstractFileSystem):
         path = self._strip_protocol(path)
         out = dict()
         detail = kwargs.pop("detail", False)
-        for path, dirs, files in self.walk(path, maxdepth, detail=True, **kwargs):
+        for path, dirs, files in self.walk(
+            path, maxdepth, detail=True, **kwargs
+            ):
             if withdirs:
                 files.update(dirs)
             out.update({info["name"]: info for name, info in files.items()})

@@ -52,7 +52,9 @@ class V3ioFile(AbstractBufferedFile):
         client: Client = self.fs._client
         container, path = split_container(self.path)
         client.put_object(
-            container, path, body=body, append=True, raise_for_status=[HTTPStatus.OK],
+            container, path, body=body, append=True, raise_for_status=[
+                HTTPStatus.OK
+                ],
         )
 
         # No need to clear self.buffer, fsspec does that

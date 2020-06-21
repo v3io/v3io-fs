@@ -30,7 +30,7 @@ from .fs import V3ioFS  # noqa: F401
 try:
     fsspec.register_implementation("v3io", V3ioFS, clobber=True)
     del fsspec  # clear the module namespace
-except:
+except Exception:
     from fsspec.registry import known_implementations
 
     known_implementations["v3io"] = {
