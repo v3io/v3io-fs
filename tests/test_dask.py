@@ -17,15 +17,13 @@ import dask.bag as db
 
 from conftest import access_key
 
-data = 'In god we trust; all others must bring data.'
+data = "In god we trust; all others must bring data."
 
 
 def test_dask(tmp_obj):
-    uri = f'v3io://{tmp_obj.path}'
-    storage_options = {
-        'V3IO_ACCESS_KEY': access_key
-    }
+    uri = f"v3io://{tmp_obj.path}"
+    storage_options = {"V3IO_ACCESS_KEY": access_key}
     file = db.read_text(uri, storage_options=storage_options)
-    data, = file.compute(scheduler='single-threaded')
-    data = data.encode('utf-8')
-    assert tmp_obj.data == data, 'bad data'
+    (data,) = file.compute(scheduler="single-threaded")
+    data = data.encode("utf-8")
+    assert tmp_obj.data == data, "bad data"

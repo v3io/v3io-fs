@@ -19,14 +19,14 @@ import pytest
 
 split_cases = [
     # path, expected, raises
-    ('', None, True),
-    ('/', ('', ''), False),
-    ('/a', ('a', ''), False),
-    ('/a/b/c', ('a', 'b/c'), False),
+    ("", None, True),
+    ("/", ("", ""), False),
+    ("/a", ("a", ""), False),
+    ("/a/b/c", ("a", "b/c"), False),
 ]
 
 
-@pytest.mark.parametrize('path, expected, raises', split_cases)
+@pytest.mark.parametrize("path, expected, raises", split_cases)
 def test_split_container(path, expected, raises):
     if raises:
         with pytest.raises(ValueError):
@@ -34,19 +34,19 @@ def test_split_container(path, expected, raises):
         return
 
     out = v3path.split_container(path)
-    assert expected == tuple(out), 'split'
+    assert expected == tuple(out), "split"
 
 
 unslash_cases = [
     # path, expected
-    ('', ''),
-    ('/', ''),
-    ('/a', '/a'),
-    ('/a/', '/a'),
+    ("", ""),
+    ("/", ""),
+    ("/a", "/a"),
+    ("/a/", "/a"),
 ]
 
 
-@pytest.mark.parametrize('path, expected', unslash_cases)
+@pytest.mark.parametrize("path, expected", unslash_cases)
 def test_unslash(path, expected):
     out = v3path.unslash(path)
     assert out == expected

@@ -20,22 +20,22 @@ def split_container(path):
     ('bigdata', 'path/to/file')
     """
     if not path:
-        raise ValueError('empty path')
+        raise ValueError("empty path")
 
-    if path == '/':
-        return '', ''
+    if path == "/":
+        return "", ""
 
-    if path[0] == '/':
+    if path[0] == "/":
         path = path[1:]
 
-    if '/' not in path:
-        return path, ''  # container
+    if "/" not in path:
+        return path, ""  # container
 
-    return path.split('/', maxsplit=1)
+    return path.split("/", maxsplit=1)
 
 
 def unslash(s):
     """Remove optional slash from the end."""
-    if not s or s[-1] != '/':
+    if not s or s[-1] != "/":
         return s
     return s[:-1]

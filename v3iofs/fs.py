@@ -43,44 +43,43 @@ class V3ioFS(AbstractFileSystem):
         Passed to fsspec.AbstractFileSystem
     """
 
-    protocol = 'v3io'
+    protocol = "v3io"
 
     def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._v3io_api = v3io_api or environ.get('V3IO_API')
-        self._v3io_access_key = v3io_access_key or \
-            environ.get('V3IO_ACCESS_KEY')
+        self._v3io_api = v3io_api or environ.get("V3IO_API")
+        self._v3io_access_key = v3io_access_key or environ.get("V3IO_ACCESS_KEY")
 
         self._client = Client(
             endpoint=self._v3io_api,
             access_key=self._v3io_access_key,
-            transport_kind='requests',
+            transport_kind="requests",
         )
 
     def _details(self, contents, **kwargs):
         pathlist = []
         for c in contents:
             data = {}
-            data['name'] = c['name'].lstrip("/")
-            if c['size'] is not None:
-                data['type'] = 'file'
-                data['size'] = c['size']
+            data["name"] = c["name"].lstrip("/")
+            if c["size"] is not None:
+                data["type"] = "file"
+                data["size"] = c["size"]
             else:
-                data['type'] = 'directory'
-                data['size']= 0
+                data["type"] = "directory"
+                data["size"] = 0
             pathlist.append(data)
         return pathlist
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
-        
+
         container, path = split_container(path)
         if container == "":
             return self._list_containers(detail)
         elif container and path == "":
             containers = self._list_containers(detail=True)
-            containers = [c['name'] for c in containers]
+            containers = [c["name"] for c in containers]
             if not container in containers:
                 raise FileNotFoundError("Container not found!!")
         try:
@@ -112,16 +111,15 @@ class V3ioFS(AbstractFileSystem):
             pathlist = []
             dirname, _, filename = path.rpartition("/")
             resp = self._client.get_container_contents(
-                container=container,
-                path=dirname,
-                )
+                container=container, path=dirname,
+            )
             objects = resp.output.contents
             fn = object_info if detail else object_path
             tempfiles = [object_info(container, o) for o in objects]
             fullpath = f"/{container}/{path}"
             logger.debug(f"fullpath:  {fullpath}")
             for f in tempfiles:
-                if f['name'] == fullpath:
+                if f["name"] == fullpath:
                     pathlist.append(f)
             if not pathlist:
                 raise FileNotFoundError("File or directory not found!!")
@@ -129,13 +127,11 @@ class V3ioFS(AbstractFileSystem):
         if detail:
             return pathlist
         else:
-            pathlist = [f['name'] for f in files]
+            pathlist = [f["name"] for f in files]
         return pathlist
 
     def _list_containers(self, detail):
-        resp = self._client.get_containers(
-            raise_for_status=[HTTPStatus.OK],
-        )
+        resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK],)
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
@@ -145,21 +141,18 @@ class V3ioFS(AbstractFileSystem):
     def _rm(self, path):
         container, path = split_container(path)
         if not container:
-            raise ValueError(f'bad path: {path:r}')
+            raise ValueError(f"bad path: {path:r}")
 
         self._client.delete_object(
-            container=container,
-            path=path,
-            raise_for_status=[HTTPStatus.NO_CONTENT],
+            container=container, path=path, raise_for_status=[HTTPStatus.NO_CONTENT],
         )
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
-            raise ValueError('only truncate touch supported')
+            raise ValueError("only truncate touch supported")
         container, path = split_container(path)
         self._client.put_object(
-            container, path,
-            raise_for_status=[HTTPStatus.OK],
+            container, path, raise_for_status=[HTTPStatus.OK],
         )
 
     def info(self, path, **kwargs):
@@ -219,10 +212,15 @@ class V3ioFS(AbstractFileSystem):
         else:
             return {name: out[name] for name in names}
 
-    
     def _open(
-        self, path, mode='rb', block_size=None, autocommit=True,
-            cache_options=None, **kw):
+        self,
+        path,
+        mode="rb",
+        block_size=None,
+        autocommit=True,
+        cache_options=None,
+        **kw,
+    ):
         return V3ioFile(
             fs=self,
             path=path,
@@ -230,17 +228,18 @@ class V3ioFS(AbstractFileSystem):
             block_size=block_size,
             autocommit=autocommit,
             cache_options=cache_options,
-            **kw)
+            **kw,
+        )
 
 
 def container_path(container):
-    return f'/{container.name}'
+    return f"/{container.name}"
 
 
 def container_info(container):
     return {
-        'name': container.name,
-        'size': None,
+        "name": container.name,
+        "size": None,
     }
 
 
@@ -248,34 +247,34 @@ def prefix_path(container_name, prefix):
     if not isinstance(prefix, str):
         prefix = prefix.prefix.lstrip()
     # prefix already have a leading /
-    return unslash(f'/{container_name}/{prefix}')
+    return unslash(f"/{container_name}/{prefix}")
 
 
 def prefix_info(container_name, prefix):
-    return info_of(container_name, prefix, 'prefix')
+    return info_of(container_name, prefix, "prefix")
 
 
 def object_path(container_name, object):
     # object.key already have a leading /
-    return f'/{container_name}{object.key}'
+    return f"/{container_name}{object.key}"
 
 
 def object_info(container_name, object):
-    return info_of(container_name, object, 'key')
+    return info_of(container_name, object, "key")
 
 
 def info_of(container_name, obj, name_key):
     return {
-        'name': prefix_path(container_name, getattr(obj, name_key)),
-        'size': getattr(obj, 'size', None),
+        "name": prefix_path(container_name, getattr(obj, name_key)),
+        "size": getattr(obj, "size", None),
     }
 
 
 def parse_time(creation_date):
     # '2020-03-26T09:42:57.504000+00:00'
     # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind('+')  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    i = creation_date.rfind("+")  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], "%Y-%m-%dT%H:%M:%S.%f")
     dt = dt.replace(tzinfo=timezone.utc)
     return dt.timestamp()
 
@@ -288,12 +287,12 @@ def split_auth(url):
     ('v3io://domain.company.com', '')
     """
     u = urlparse(url)
-    if '@' not in u.netloc:
-        return (url, '')
+    if "@" not in u.netloc:
+        return (url, "")
 
-    auth, netloc = u.netloc.split('@', 1)
-    if ':' not in auth:
-        raise ValueError('missing : in auth')
-    _, key = auth.split(':', 1)
+    auth, netloc = u.netloc.split("@", 1)
+    if ":" not in auth:
+        raise ValueError("missing : in auth")
+    _, key = auth.split(":", 1)
     u = u._replace(netloc=netloc)
     return (u.geturl(), key)
