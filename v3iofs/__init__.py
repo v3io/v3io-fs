@@ -39,4 +39,4 @@ except AttributeError:
     }
 
 except Exception as e:
-    raise RuntimeError(f"Failed to import v3io-df for {e}")
+    raise RuntimeError(f"Failed to import v3io-fs for {e}")

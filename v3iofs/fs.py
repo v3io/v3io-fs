@@ -157,11 +157,7 @@ class V3ioFS(AbstractFileSystem):
     def info(self, path, **kwargs):
         """Give details of entry at path
         Returns a single dictionary, with exactly the same information as
-<<<<<<< HEAD
-        ``ls`` would with ``detail=True``
-=======
         ``ls`` would with ``detail=True``.
->>>>>>> revise_pr
         The default implementation should calls ls and could be overridden by a
         shortcut. kwargs are passed on to ```ls()``.
         Some file systems might not be able to measure the file's size, in
@@ -184,42 +180,6 @@ class V3ioFS(AbstractFileSystem):
         else:
             raise FileNotFoundError(path)
 
-<<<<<<< HEAD
-    def find(self, path, maxdepth=None, withdirs=False, **kwargs):
-        """List all files below path.
-        Like posix ``find`` command without conditions
-        Parameters
-        ----------
-        path : str
-        maxdepth: int or None
-            If not None, the maximum number of levels to descend
-        withdirs: bool
-            Whether to include directory paths in the output. This is True
-            when used by glob, but users usually only want files.
-        kwargs are passed to ``ls``.
-        """
-        # TODO: allow equivalent of -name parameter
-        path = self._strip_protocol(path)
-        out = dict()
-        detail = kwargs.pop("detail", False)
-        for path, dirs, files in self.walk(
-                path, maxdepth, detail=True, **kwargs
-                ):
-            if withdirs:
-                files.update(dirs)
-            out.update({info["name"]: info for name, info in files.items()})
-        if self.isfile(path) and path not in out:
-            # walk works on directories, but find should also return [path]
-            # when path happens to be a file
-            out[path] = {}
-        names = sorted(out)
-        if not detail:
-            return names
-        else:
-            return {name: out[name] for name in names}
-
-=======
->>>>>>> revise_pr
     def _open(
         self,
         path,
