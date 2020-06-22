@@ -85,35 +85,33 @@ class V3ioFS(AbstractFileSystem):
             containers = [c["name"] for c in containers]
             if container not in containers:
                 raise FileNotFoundError("Container not found!!")
-        try:
-            resp = self._client.get_container_contents(
+
+        resp = self._client.get_container_contents(
                 container=container,
                 path=path,
                 get_all_attributes=True,
-                raise_for_status=[HTTPStatus.OK],
+                raise_for_status="never",#[HTTPStatus.OK],
             )
 
-            # Try to fetch a list of directories, else return empty
-            try:
-                prefixes = resp.output.common_prefixes
-                dirs = [prefix_info(container, p) for p in prefixes]
-            except:
-                dirs = []
+        # Try to fetch a list of directories, else return empty
+        if hasattr(resp.output, 'common_prefixes'):
+            prefixes = resp.output.common_prefixes
+            dirs = [prefix_info(container, p) for p in prefixes]
+        else:
+            dirs = []
 
-            # Try to fetch a list of files, else return empty
-            try:
-                objects = resp.output.contents
-                files = [object_info(container, o) for o in objects]
-            except:
-                files = []
-            pathlist = dirs + files
-            if not pathlist:
-                raise FileNotFoundError(f"Nothing found in {path}")
-        except:
-            logger.debug(
-                "Nothing found in container.  Moving to top level container"
-                )
-            pathlist = []
+        # Try to fetch a list of files, else return empty
+        if hasattr(resp.output, 'contents'):
+            objects = resp.output.contents
+            files = [object_info(container, o) for o in objects]
+        else:
+            files = []
+
+        pathlist = dirs + files
+#             if not pathlist:
+#                 raise FileNotFoundError(f"Nothing found in {path}")
+
+        if not hasattr(resp.output, 'common_prefixes') and not hasattr(resp.output, 'contents'):
             dirname, _, filename = path.rpartition("/")
             resp = self._client.get_container_contents(
                 container=container, path=dirname,
@@ -205,9 +203,7 @@ class V3ioFS(AbstractFileSystem):
         path = self._strip_protocol(path)
         out = dict()
         detail = kwargs.pop("detail", False)
-        for path, dirs, files in self.walk(
-            path, maxdepth, detail=True, **kwargs
-            ):
+        for path, dirs, files in self.walk(path, maxdepth, detail=True, **kwargs):
             if withdirs:
                 files.update(dirs)
             out.update({info["name"]: info for name, info in files.items()})
