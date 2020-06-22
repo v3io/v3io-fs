@@ -30,9 +30,13 @@ from .fs import V3ioFS  # noqa: F401
 try:
     fsspec.register_implementation("v3io", V3ioFS, clobber=True)
     del fsspec  # clear the module namespace
+
 except AttributeError:
     from fsspec.registry import known_implementations
-    known_implementations["v3io"] = {"class": "v3iofs.V3ioFS",
-                                    'err': 'Please install v3iofs to use the v3io fileysstem class'}
+    known_implementations["v3io"] = {
+        "class": "v3iofs.V3ioFS",
+        'err': 'Please install v3iofs to use the v3io fileysstem class'
+    }
+
 except Exception as e:
-    raise RunTimeError(f"Failed to import v3io-df for {e}")
+    raise RuntimeError(f"Failed to import v3io-df for {e}")

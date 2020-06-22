@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import logging
-
 from datetime import datetime, timezone
 from http import HTTPStatus
 from os import environ
@@ -25,8 +23,6 @@ from v3io.dataplane import Client
 
 from .path import split_container, unslash
 from .file import V3ioFile
-
-logger = logging.getLogger(__name__)
 
 
 class V3ioFS(AbstractFileSystem):
@@ -78,41 +74,39 @@ class V3ioFS(AbstractFileSystem):
         container, path = split_container(path)
         if container == "":
             return self._list_containers(detail)
-        containers = self._list_containers(
-            detail=True
-            )
-        containers = [c["name"] for c in containers]
-        if container not in containers:
-            raise FileNotFoundError("Container not found!!")
-        try:
-            resp = self._client.get_container_contents(
+        else:
+            containers = self._list_containers(
+                detail=True
+                )
+            containers = [c["name"] for c in containers]
+            if container not in containers:
+                raise FileNotFoundError("Container not found!!")
+
+        resp = self._client.get_container_contents(
                 container=container,
                 path=path,
                 get_all_attributes=True,
-                raise_for_status=[HTTPStatus.OK],
+                raise_for_status="never",
             )
 
-            # Try to fetch a list of directories, else return empty
-            try:
-                prefixes = resp.output.common_prefixes
-                dirs = [prefix_info(container, p) for p in prefixes]
-            except:
-                dirs = []
+        # Try to fetch a list of directories, else return empty
+        if hasattr(resp.output, 'common_prefixes'):
+            prefixes = resp.output.common_prefixes
+            dirs = [prefix_info(container, p) for p in prefixes]
+        else:
+            dirs = []
 
-            # Try to fetch a list of files, else return empty
-            try:
-                objects = resp.output.contents
-                files = [object_info(container, o) for o in objects]
-            except:
-                files = []
-            pathlist = dirs + files
-            if not pathlist:
-                raise FileNotFoundError(f"Nothing found in {path}")
-        except:
-            logger.debug(
-                "Nothing found in container.  Moving to top level container"
-                )
-            pathlist = []
+        # Try to fetch a list of files, else return empty
+        if hasattr(resp.output, 'contents'):
+            objects = resp.output.contents
+            files = [object_info(container, o) for o in objects]
+        else:
+            files = []
+
+        pathlist = dirs + files
+
+        if (not hasattr(resp.output, 'common_prefixes')) and (
+                not hasattr(resp.output, 'contents')):
             dirname, _, filename = path.rpartition("/")
             resp = self._client.get_container_contents(
                 container=container, path=dirname,
@@ -120,17 +114,17 @@ class V3ioFS(AbstractFileSystem):
             objects = resp.output.contents
             tempfiles = [object_info(container, o) for o in objects]
             fullpath = f"/{container}/{path}"
-            logger.debug(f"fullpath:  {fullpath}")
             for f in tempfiles:
                 if f["name"] == fullpath:
                     pathlist.append(f)
             if not pathlist:
                 raise FileNotFoundError("File or directory not found!!")
+        if not pathlist:
+            raise FileNotFoundError("File or directory not found!!")
         pathlist = self._details(pathlist)
         if detail:
             return pathlist
-        else:
-            pathlist = [f["name"] for f in files]
+        pathlist = [f["name"] for f in files]
         return pathlist
 
     def _list_containers(self, detail):
@@ -163,7 +157,11 @@ class V3ioFS(AbstractFileSystem):
     def info(self, path, **kwargs):
         """Give details of entry at path
         Returns a single dictionary, with exactly the same information as
+<<<<<<< HEAD
         ``ls`` would with ``detail=True``
+=======
+        ``ls`` would with ``detail=True``.
+>>>>>>> revise_pr
         The default implementation should calls ls and could be overridden by a
         shortcut. kwargs are passed on to ```ls()``.
         Some file systems might not be able to measure the file's size, in
@@ -176,16 +174,17 @@ class V3ioFS(AbstractFileSystem):
 
         out = self.ls(path, detail=True, **kwargs)
         path = path.rstrip("/")
-        out1 = [o for o in out if o["name"].rstrip("/") == path]
-        if len(out1) == 1:
-            if "size" not in out1[0]:
-                out1[0]["size"] = None
-            return out1[0]
-        elif len(out1) > 1 or out:
+        pathlist = [o for o in out if o["name"].rstrip("/") == path]
+        if len(pathlist) == 1:
+            if "size" not in pathlist[0]:
+                pathlist[0]["size"] = None
+            return pathlist[0]
+        elif len(pathlist) > 1 or out:
             return {"name": path, "size": 0, "type": "directory"}
         else:
             raise FileNotFoundError(path)
 
+<<<<<<< HEAD
     def find(self, path, maxdepth=None, withdirs=False, **kwargs):
         """List all files below path.
         Like posix ``find`` command without conditions
@@ -219,6 +218,8 @@ class V3ioFS(AbstractFileSystem):
         else:
             return {name: out[name] for name in names}
 
+=======
+>>>>>>> revise_pr
     def _open(
         self,
         path,
