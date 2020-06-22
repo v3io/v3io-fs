@@ -90,7 +90,7 @@ class V3ioFS(AbstractFileSystem):
                 container=container,
                 path=path,
                 get_all_attributes=True,
-                raise_for_status="never",#[HTTPStatus.OK],
+                raise_for_status="never",
             )
 
         # Try to fetch a list of directories, else return empty
@@ -108,16 +108,14 @@ class V3ioFS(AbstractFileSystem):
             files = []
 
         pathlist = dirs + files
-#             if not pathlist:
-#                 raise FileNotFoundError(f"Nothing found in {path}")
 
-        if not hasattr(resp.output, 'common_prefixes') and not hasattr(resp.output, 'contents'):
+        if (not hasattr(resp.output, 'common_prefixes')) and (
+                not hasattr(resp.output, 'contents')):
             dirname, _, filename = path.rpartition("/")
             resp = self._client.get_container_contents(
                 container=container, path=dirname,
             )
             objects = resp.output.contents
-            fn = object_info if detail else object_path
             tempfiles = [object_info(container, o) for o in objects]
             fullpath = f"/{container}/{path}"
             logger.debug(f"fullpath:  {fullpath}")
@@ -162,7 +160,7 @@ class V3ioFS(AbstractFileSystem):
 
     def info(self, path, **kwargs):
         """Give details of entry at path
-        Returns a single dictionary, with exactly the same information as 
+        Returns a single dictionary, with exactly the same information as
         ``ls`` would with ``detail=True``.
         The default implementation should calls ls and could be overridden by a
         shortcut. kwargs are passed on to ```ls()``.
@@ -170,7 +168,7 @@ class V3ioFS(AbstractFileSystem):
         which case, the returned dict will include ``'size': None``.
         Returns
         -------
-        dict with keys: name (full path in the FS), size (in bytes), 
+        dict with keys: name (full path in the FS), size (in bytes),
         type (file, directory, or something else) and other FS-specific keys.
         """
 
@@ -185,37 +183,6 @@ class V3ioFS(AbstractFileSystem):
             return {"name": path, "size": 0, "type": "directory"}
         else:
             raise FileNotFoundError(path)
-
-    def find(self, path, maxdepth=None, withdirs=False, **kwargs):
-        """List all files below path.
-        Like posix ``find`` command without conditions
-        Parameters
-        ----------
-        path : str
-        maxdepth: int or None
-            If not None, the maximum number of levels to descend
-        withdirs: bool
-            Whether to include directory paths in the output. This is True
-            when used by glob, but users usually only want files.
-        kwargs are passed to ``ls``.
-        """
-        # TODO: allow equivalent of -name parameter
-        path = self._strip_protocol(path)
-        out = dict()
-        detail = kwargs.pop("detail", False)
-        for path, dirs, files in self.walk(path, maxdepth, detail=True, **kwargs):
-            if withdirs:
-                files.update(dirs)
-            out.update({info["name"]: info for name, info in files.items()})
-        if self.isfile(path) and path not in out:
-            # walk works on directories, but find should also return [path]
-            # when path happens to be a file
-            out[path] = {}
-        names = sorted(out)
-        if not detail:
-            return names
-        else:
-            return {name: out[name] for name in names}
 
     def _open(
         self,
