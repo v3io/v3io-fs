@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import logging
-
 from datetime import datetime, timezone
 from http import HTTPStatus
 from os import environ
@@ -25,8 +23,6 @@ from v3io.dataplane import Client
 
 from .path import split_container, unslash
 from .file import V3ioFile
-
-logger = logging.getLogger(__name__)
 
 
 class V3ioFS(AbstractFileSystem):
@@ -118,17 +114,17 @@ class V3ioFS(AbstractFileSystem):
             objects = resp.output.contents
             tempfiles = [object_info(container, o) for o in objects]
             fullpath = f"/{container}/{path}"
-            logger.debug(f"fullpath:  {fullpath}")
             for f in tempfiles:
                 if f["name"] == fullpath:
                     pathlist.append(f)
             if not pathlist:
                 raise FileNotFoundError("File or directory not found!!")
+        if not pathlist:
+            raise FileNotFoundError("File or directory not found!!")
         pathlist = self._details(pathlist)
         if detail:
             return pathlist
-        else:
-            pathlist = [f["name"] for f in files]
+        pathlist = [f["name"] for f in files]
         return pathlist
 
     def _list_containers(self, detail):
@@ -174,12 +170,12 @@ class V3ioFS(AbstractFileSystem):
 
         out = self.ls(path, detail=True, **kwargs)
         path = path.rstrip("/")
-        out1 = [o for o in out if o["name"].rstrip("/") == path]
-        if len(out1) == 1:
-            if "size" not in out1[0]:
-                out1[0]["size"] = None
-            return out1[0]
-        elif len(out1) > 1 or out:
+        pathlist = [o for o in out if o["name"].rstrip("/") == path]
+        if len(pathlist) == 1:
+            if "size" not in pathlist[0]:
+                pathlist[0]["size"] = None
+            return pathlist[0]
+        elif len(pathlist) > 1 or out:
             return {"name": path, "size": 0, "type": "directory"}
         else:
             raise FileNotFoundError(path)
