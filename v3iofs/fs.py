@@ -78,13 +78,12 @@ class V3ioFS(AbstractFileSystem):
         container, path = split_container(path)
         if container == "":
             return self._list_containers(detail)
-        else:
-            containers = self._list_containers(
-                detail=True
-                )
-            containers = [c["name"] for c in containers]
-            if container not in containers:
-                raise FileNotFoundError("Container not found!!")
+        containers = self._list_containers(
+            detail=True
+            )
+        containers = [c["name"] for c in containers]
+        if container not in containers:
+            raise FileNotFoundError("Container not found!!")
         try:
             resp = self._client.get_container_contents(
                 container=container,
@@ -119,7 +118,6 @@ class V3ioFS(AbstractFileSystem):
                 container=container, path=dirname,
             )
             objects = resp.output.contents
-            fn = object_info if detail else object_path
             tempfiles = [object_info(container, o) for o in objects]
             fullpath = f"/{container}/{path}"
             logger.debug(f"fullpath:  {fullpath}")
@@ -164,15 +162,15 @@ class V3ioFS(AbstractFileSystem):
 
     def info(self, path, **kwargs):
         """Give details of entry at path
-        Returns a single dictionary, with exactly the same information as 
-        ``ls`` would with ``detail=True``.
+        Returns a single dictionary, with exactly the same information as
+        ``ls`` would with ``detail=True``
         The default implementation should calls ls and could be overridden by a
         shortcut. kwargs are passed on to ```ls()``.
         Some file systems might not be able to measure the file's size, in
         which case, the returned dict will include ``'size': None``.
         Returns
         -------
-        dict with keys: name (full path in the FS), size (in bytes), 
+        dict with keys: name (full path in the FS), size (in bytes),
         type (file, directory, or something else) and other FS-specific keys.
         """
 
@@ -206,8 +204,8 @@ class V3ioFS(AbstractFileSystem):
         out = dict()
         detail = kwargs.pop("detail", False)
         for path, dirs, files in self.walk(
-            path, maxdepth, detail=True, **kwargs
-            ):
+                path, maxdepth, detail=True, **kwargs
+                ):
             if withdirs:
                 files.update(dirs)
             out.update({info["name"]: info for name, info in files.items()})
