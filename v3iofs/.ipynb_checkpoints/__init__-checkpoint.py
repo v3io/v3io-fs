@@ -14,12 +14,12 @@
 """v3iofs - An fsspec driver for v3io"""
 
 __all__ = [
-    '__version__',
-    'V3ioFS',
-    'V3ioFile',
+    "__version__",
+    "V3ioFS",
+    "V3ioFile",
 ]
 
-__version__ = '0.1.0a1'
+__version__ = "0.1.0a1"
 
 import fsspec
 
@@ -28,7 +28,7 @@ from .fs import V3ioFS  # noqa: F401
 
 # TODO: Not sure about clobber=True
 try:
-    fsspec.register_implementation('v3io', V3ioFS, clobber=True)
+    fsspec.register_implementation("v3io", V3ioFS, clobber=True)
     del fsspec  # clear the module namespace
 except AttributeError:
     from fsspec.registry import known_implementations
