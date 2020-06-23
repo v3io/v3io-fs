@@ -205,7 +205,7 @@ def info_of(container_name, obj, name_key):
     return {
         'name': prefix_path(container_name, getattr(obj, name_key)),
         'size': getattr(obj, 'size', None),
-        'created': parse_time(obj.creating_time),
+        # 'created': parse_time(obj.creating_time),
         'mtime': parse_time(obj.last_modified),
         'atime': parse_time(obj.access_time),
         'mode': int(obj.mode[1:], base=8),  # '040755'
