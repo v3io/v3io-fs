@@ -72,9 +72,8 @@ class V3ioFS(AbstractFileSystem):
         dirs = _resp_dirs(resp, container)
         files = _resp_files(resp, container)
 
+        # If not data, try to find in parent directory
         if not _has_data(resp):
-            # Try to find in parent directory
-            pathlist = self._dir_contents
             # '/a/b/c' -> ('/a/b', 'c')
             dirname, _, filename = path.rpartition('/')
             resp = self._client.get_container_contents(
