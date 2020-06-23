@@ -202,16 +202,23 @@ def object_info(container_name, object):
 
 
 def info_of(container_name, obj, name_key):
-    return {
+    info = {
         'name': prefix_path(container_name, getattr(obj, name_key)),
         'size': getattr(obj, 'size', None),
-        # 'created': parse_time(obj.creating_time),
         'mtime': parse_time(obj.last_modified),
-        # 'atime': parse_time(obj.access_time),
-        # 'mode': int(obj.mode[1:], base=8),  # '040755'
-        'gid': int(obj.gid, 16),
-        'uid': int(obj.uid, 16),
     }
+
+    if hasattr(obj, 'creating_time'):
+        info['created'] = parse_time(obj.creating_time)
+    if hasattr(obj, 'access_time'):
+        info['atime'] = parse_time(obj.access_time)
+    if hasattr(obj, 'mode'):
+        info['mode'] = int(obj.mode[1:], base=8),  # '040755'
+    if hasattr(obj, 'gid'):
+        info['gid'] = int(obj.gid, 16),
+    if hasattr(obj, 'uid'):
+        info['uid'] = int(obj.uid, 16),
+    return info
 
 
 def parse_time(creation_date):
