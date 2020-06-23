@@ -207,7 +207,7 @@ def info_of(container_name, obj, name_key):
         'size': getattr(obj, 'size', None),
         # 'created': parse_time(obj.creating_time),
         'mtime': parse_time(obj.last_modified),
-        'atime': parse_time(obj.access_time),
+        # 'atime': parse_time(obj.access_time),
         'mode': int(obj.mode[1:], base=8),  # '040755'
         'gid': int(obj.gid, 16),
         'uid': int(obj.uid, 16),
