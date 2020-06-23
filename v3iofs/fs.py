@@ -38,97 +38,65 @@ class V3ioFS(AbstractFileSystem):
         Passed to fsspec.AbstractFileSystem
     """
 
-    protocol = "v3io"
+    protocol = 'v3io'
 
     def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._v3io_api = v3io_api or environ.get("V3IO_API")
-        self._v3io_access_key = v3io_access_key or environ.get(
-            "V3IO_ACCESS_KEY"
-            )
+        self._v3io_api = v3io_api or environ.get('V3IO_API')
+        self._v3io_access_key = v3io_access_key or \
+            environ.get('V3IO_ACCESS_KEY')
 
         self._client = Client(
             endpoint=self._v3io_api,
             access_key=self._v3io_access_key,
-            transport_kind="requests",
+            transport_kind='requests',
         )
 
-    def _details(self, contents, **kwargs):
-        pathlist = []
-        for c in contents:
-            data = {}
-            data["name"] = c["name"].lstrip("/")
-            if c["size"] is not None:
-                data["type"] = "file"
-                data["size"] = c["size"]
-            else:
-                data["type"] = "directory"
-                data["size"] = 0
-            pathlist.append(data)
-        return pathlist
+    def _details(self, contents):
+        return [_details_of(c) for c in contents]
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
-
+        full_path = path
         container, path = split_container(path)
-        if container == "":
+        if not container:
             return self._list_containers(detail)
-        else:
-            containers = self._list_containers(
-                detail=True
-                )
-            containers = [c["name"] for c in containers]
-            if container not in containers:
-                raise FileNotFoundError("Container not found!!")
 
         resp = self._client.get_container_contents(
-                container=container,
-                path=path,
-                get_all_attributes=True,
-                raise_for_status="never",
-            )
+            container=container, path=path,
+            get_all_attributes=True,
+            raise_for_status='never',
+        )
 
-        # Try to fetch a list of directories, else return empty
-        if hasattr(resp.output, 'common_prefixes'):
-            prefixes = resp.output.common_prefixes
-            dirs = [prefix_info(container, p) for p in prefixes]
-        else:
-            dirs = []
+        dirs = _resp_dirs(resp, container)
+        files = _resp_files(resp, container)
 
-        # Try to fetch a list of files, else return empty
-        if hasattr(resp.output, 'contents'):
-            objects = resp.output.contents
-            files = [object_info(container, o) for o in objects]
-        else:
-            files = []
-
-        pathlist = dirs + files
-
-        if (not hasattr(resp.output, 'common_prefixes')) and (
-                not hasattr(resp.output, 'contents')):
-            dirname, _, filename = path.rpartition("/")
+        if not _has_data(resp):
+            # Try to find in parent directory
+            pathlist = self._dir_contents
+            # '/a/b/c' -> ('/a/b', 'c')
+            dirname, _, filename = path.rpartition('/')
             resp = self._client.get_container_contents(
                 container=container, path=dirname,
             )
-            objects = resp.output.contents
-            tempfiles = [object_info(container, o) for o in objects]
-            fullpath = f"/{container}/{path}"
-            for f in tempfiles:
-                if f["name"] == fullpath:
-                    pathlist.append(f)
-            if not pathlist:
-                raise FileNotFoundError("File or directory not found!!")
+            for obj in getattr(resp.output, 'contents', []):
+                file = object_info(container, obj)
+                if file['name'] == full_path:
+                    files = [file]
+                    break
+
+        pathlist = dirs + files
         if not pathlist:
-            raise FileNotFoundError("File or directory not found!!")
-        pathlist = self._details(pathlist)
+            raise FileNotFoundError(f'{full_path!r} not found')
+
         if detail:
-            return pathlist
-        pathlist = [f["name"] for f in files]
-        return pathlist
+            return self._details(pathlist)
+
+        return [file['name'] for file in files]
 
     def _list_containers(self, detail):
-        resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK],)
+        resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK])
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
@@ -138,7 +106,7 @@ class V3ioFS(AbstractFileSystem):
     def _rm(self, path):
         container, path = split_container(path)
         if not container:
-            raise ValueError(f"bad path: {path:r}")
+            raise ValueError(f'bad path: {path:r}')
 
         self._client.delete_object(
             container=container, path=path, raise_for_status=[
@@ -148,47 +116,49 @@ class V3ioFS(AbstractFileSystem):
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
-            raise ValueError("only truncate touch supported")
+            raise ValueError('only truncate touch supported')
+
         container, path = split_container(path)
         self._client.put_object(
-            container, path, raise_for_status=[HTTPStatus.OK],
-        )
+            container, path, raise_for_status=[HTTPStatus.OK])
 
-    def info(self, path, **kwargs):
-        """Give details of entry at path
+    def info(self, path, **kw):
+        """Details of entry at path
+
         Returns a single dictionary, with exactly the same information as
         ``ls`` would with ``detail=True``.
-        The default implementation should calls ls and could be overridden by a
-        shortcut. kwargs are passed on to ```ls()``.
-        Some file systems might not be able to measure the file's size, in
-        which case, the returned dict will include ``'size': None``.
+
+        Parameters
+        ----------
+        path: str
+            Path to get info for
+        **kw:
+            Keyword arguments passed to `ls`
+
         Returns
         -------
-        dict with keys: name (full path in the FS), size (in bytes),
-        type (file, directory, or something else) and other FS-specific keys.
+        dict
+            keys: name (full path in the FS), size (in bytes), type (file,
+            directory, or something else) and other FS-specific keys.
         """
 
-        out = self.ls(path, detail=True, **kwargs)
-        path = path.rstrip("/")
-        pathlist = [o for o in out if o["name"].rstrip("/") == path]
-        if len(pathlist) == 1:
-            if "size" not in pathlist[0]:
-                pathlist[0]["size"] = None
-            return pathlist[0]
-        elif len(pathlist) > 1 or out:
-            return {"name": path, "size": 0, "type": "directory"}
-        else:
-            raise FileNotFoundError(path)
+        out = self.ls(path, detail=True, **kw)
+        spath = path.rstrip('/')
+        entries = [o for o in out if o['name'].rstrip('/') == spath]
+
+        if len(entries) == 1:
+            entry = entries[0]
+            entry.setdefault('size', None)
+            return entry
+
+        if len(entries) >= 1 or out:
+            return {'name': path, 'size': 0, 'type': 'directory'}
+
+        raise FileNotFoundError(path)
 
     def _open(
-        self,
-        path,
-        mode="rb",
-        block_size=None,
-        autocommit=True,
-        cache_options=None,
-        **kw,
-    ):
+        self, path, mode='rb', block_size=None, autocommit=True,
+            cache_options=None, **kw):
         return V3ioFile(
             fs=self,
             path=path,
@@ -201,48 +171,55 @@ class V3ioFS(AbstractFileSystem):
 
 
 def container_path(container):
-    return f"/{container.name}"
+    return f'/{container.name}'
 
 
 def container_info(container):
     return {
-        "name": container.name,
-        "size": None,
+        'name': container.name,
+        'size': None,
+        'created': parse_time(container.creation_date),
     }
 
 
 def prefix_path(container_name, prefix):
     if not isinstance(prefix, str):
-        prefix = prefix.prefix.lstrip()
+        prefix = prefix.prefix
     # prefix already have a leading /
-    return unslash(f"/{container_name}/{prefix}")
+    return unslash(f'/{container_name}{prefix}')
 
 
 def prefix_info(container_name, prefix):
-    return info_of(container_name, prefix, "prefix")
+    return info_of(container_name, prefix, 'prefix')
 
 
 def object_path(container_name, object):
     # object.key already have a leading /
-    return f"/{container_name}{object.key}"
+    return f'/{container_name}{object.key}'
 
 
 def object_info(container_name, object):
-    return info_of(container_name, object, "key")
+    return info_of(container_name, object, 'key')
 
 
 def info_of(container_name, obj, name_key):
     return {
-        "name": prefix_path(container_name, getattr(obj, name_key)),
-        "size": getattr(obj, "size", None),
+        'name': prefix_path(container_name, getattr(obj, name_key)),
+        'size': getattr(obj, 'size', None),
+        'created': parse_time(obj.creating_time),
+        'mtime': parse_time(obj.last_modified),
+        'atime': parse_time(obj.access_time),
+        'mode': int(obj.mode[1:], base=8),  # '040755'
+        'gid': int(obj.gid, 16),
+        'uid': int(obj.uid, 16),
     }
 
 
 def parse_time(creation_date):
     # '2020-03-26T09:42:57.504000+00:00'
     # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind("+")  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], "%Y-%m-%dT%H:%M:%S.%f")
+    i = creation_date.rfind('+')  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
     dt = dt.replace(tzinfo=timezone.utc)
     return dt.timestamp()
 
@@ -255,12 +232,41 @@ def split_auth(url):
     ('v3io://domain.company.com', '')
     """
     u = urlparse(url)
-    if "@" not in u.netloc:
-        return (url, "")
+    if '@' not in u.netloc:
+        return (url, '')
 
-    auth, netloc = u.netloc.split("@", 1)
-    if ":" not in auth:
-        raise ValueError("missing : in auth")
-    _, key = auth.split(":", 1)
+    auth, netloc = u.netloc.split('@', 1)
+    if ':' not in auth:
+        raise ValueError('missing : in auth')
+    _, key = auth.split(':', 1)
     u = u._replace(netloc=netloc)
     return (u.geturl(), key)
+
+
+def _details_of(c):
+    return {
+        'name': c['name'].lstrip('/'),
+        'type': 'directory' if c['size'] is None else 'file',
+        'size': c['size'] or 0,
+    }
+
+
+def _resp_dirs(resp, container):
+    if not hasattr(resp.output, 'common_prefixes'):
+        return []
+
+    prefixes = resp.output.common_prefixes
+    return [prefix_info(container, p) for p in prefixes]
+
+
+def _resp_files(resp, container):
+    if not hasattr(resp.output, 'contents'):
+        return []
+
+    objects = resp.output.contents
+    return [object_info(container, o) for o in objects]
+
+
+def _has_data(resp):
+    out = resp.output
+    return any(hasattr(out, attr) for attr in ('common_prefixes', 'contents'))

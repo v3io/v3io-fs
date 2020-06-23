@@ -14,29 +14,28 @@
 """v3iofs - An fsspec driver for v3io"""
 
 __all__ = [
-    "__version__",
-    "V3ioFS",
-    "V3ioFile",
+    '__version__',
+    'V3ioFS',
+    'V3ioFile',
 ]
 
-__version__ = "0.1.0a1"
+__version__ = '0.1.0a1'
 
 import fsspec
 
 from .file import V3ioFile  # noqa: F401
 from .fs import V3ioFS  # noqa: F401
 
-# TODO: Not sure about clobber=True
-try:
-    fsspec.register_implementation("v3io", V3ioFS, clobber=True)
-    del fsspec  # clear the module namespace
-
-except AttributeError:
+if hasattr(fsspec, 'register_implementation'):
+    # TODO: Not sure about clobber=True
+    fsspec.register_implementation('v3io', V3ioFS, clobber=True)
+else:
     from fsspec.registry import known_implementations
-    known_implementations["v3io"] = {
-        "class": "v3iofs.V3ioFS",
+    known_implementations['v3io'] = {
+        'class': 'v3iofs.V3ioFS',
         'err': 'Please install v3iofs to use the v3io fileysstem class'
     }
 
-except Exception as e:
-    raise RuntimeError(f"Failed to import v3io-fs for {e}")
+    del known_implementations
+
+del fsspec  # clear the module namespace

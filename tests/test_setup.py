@@ -12,20 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from subprocess import check_output
+from sys import executable
 
-import dask.bag as db
-
-from conftest import access_key
-
-data = 'In god we trust; all others must bring data.'
+import v3iofs
 
 
-def test_dask(tmp_obj):
-    uri = f'v3io://{tmp_obj.path}'
-    storage_options = {
-        'V3IO_ACCESS_KEY': access_key,
-    }
-    file = db.read_text(uri, storage_options=storage_options)
-    data, = file.compute(scheduler='single-threaded')
-    data = data.encode('utf-8')
-    assert tmp_obj.data == data, 'bad data'
+def test_setup():
+    out = check_output([executable, 'setup.py', '--version'])
+    version = out.decode('utf-8').strip()
+    assert v3iofs.__version__ == version, 'bad version'
