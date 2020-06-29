@@ -1,6 +1,8 @@
-*notebooks/*
+notebooks/
 .envrc
 .pytest_cache
 .vscode
 dist
 v3iofs.egg-info/
+*/__pycache__/
+*/.ipynb*
