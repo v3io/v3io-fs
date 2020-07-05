@@ -44,6 +44,7 @@ def tmp_obj():
     path = f'{user}-test-{ts}'
     body = f'test data for {user} at {ts}'.encode()
     client.put_object(container, path, body=body)
+    print("Added tmp_obj", client.get_object(container, path).body)
 
     yield Obj(f'/{container}/{path}', body)
 
