@@ -13,18 +13,15 @@
 # limitations under the License.
 
 from http import HTTPStatus
-import io
 
 from fsspec.spec import AbstractBufferedFile
-from fsspec.core import caches
-from v3io.dataplane import Client
 
 from .path import split_container
 
 
 class V3ioFile(AbstractBufferedFile):
     """ File-like operation on V3IO Files """
-    
+
     def __init__(
         self,
         fs,
@@ -34,9 +31,9 @@ class V3ioFile(AbstractBufferedFile):
         autocommit=True,
         cache_type="readahead",
         cache_options=None,
-        **kwargs,
-        ):
-        
+        **kwargs
+    ):
+
         self.path = path
         self.client = fs._client
 
@@ -81,7 +78,3 @@ class V3ioFile(AbstractBufferedFile):
 
         # No need to clear self.buffer, fsspec does that
         return True
-
-    def _initiate_upload(self, **kwargs):
-        self.client = self.fs._client
-        return super()._initiate_upload()

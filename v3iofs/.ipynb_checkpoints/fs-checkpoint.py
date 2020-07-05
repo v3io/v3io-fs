@@ -19,7 +19,6 @@ from os import environ
 from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
-from fsspec.utils import stringify_path
 from v3io.dataplane import Client
 
 from .path import split_container, unslash
@@ -70,57 +69,34 @@ class V3ioFS(AbstractFileSystem):
             get_all_attributes=True,
             raise_for_status='never',
         )
-        
+
         dirs = _resp_dirs(resp, container)
         files = _resp_files(resp, container)
 
         # If not data, try to find in parent directory
-#         if not _has_data(resp):
-#             # '/a/b/c' -> ('/a/b', 'c')
-#             dirname, _, filename = path.rpartition('/')
-#             resp = self._client.get_container_contents(
-#                 container=container, path=dirname,
-#             )
-#             for obj in getattr(resp.output, 'contents', []):
-#                 file = object_info(container, obj)
-#                 if file['name'] == full_path:
-#                     files = [file]
-#                     break
-
-        # Check to see if the file is an object in the container
-        if path:
-            resp = self._client.get_object(container=container,
-                                          path=path, raise_for_status='never')
-            if resp.status_code > 300:
-                pass
-            else:
-                f = {'name': full_path, 'size': len(resp.body)} 
-                files.append(f)
+        if not _has_data(resp):
+            # '/a/b/c' -> ('/a/b', 'c')
+            dirname, _, filename = path.rpartition('/')
+            resp = self._client.get_container_contents(
+                container=container, path=dirname,
+            )
+            for obj in getattr(resp.output, 'contents', []):
+                file = object_info(container, obj)
+                if file['name'] == full_path:
+                    files = [file]
+                    break
 
         pathlist = dirs + files
+
         if not pathlist:
             raise FileNotFoundError(f'{full_path!r} not found')
 
+        pathlist_ = self._details(pathlist)
+
         if detail:
-            return self._details(pathlist)
+            return pathlist_
 
-        return [file['name'] for file in files]
-
-    @classmethod
-    def _strip_protocol(cls, path):
-        """ Turn path from fully-qualified to file-system-specific
-        May require FS-specific handling, e.g., for relative paths or links.
-        """
-        path = stringify_path(path)
-        protos = (cls.protocol,) if isinstance(cls.protocol, str) else cls.protocol
-        for protocol in protos:
-            path = path.rstrip("/")
-            if path.startswith(protocol + "://"):
-                path = path[len(protocol) + 3 :]
-            elif path.startswith(protocol + ":"):
-                path = path[len(protocol) + 1 :]
-        # use of root_marker to make minimum required path, e.g., "/"
-        return path or cls.root_marker
+        return [path['name'] for path in pathlist]
 
     def _list_containers(self, detail):
         resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK])
@@ -183,70 +159,15 @@ class V3ioFS(AbstractFileSystem):
 
         raise FileNotFoundError(path)
 
-
-#     def open(self, path, mode="rb", block_size=None, cache_options=None, **kwargs):
-#         """
-#         Return a file-like object from the filesystem
-#         The resultant instance must function correctly in a context ``with``
-#         block.
-#         Parameters
-#         ----------
-#         path: str
-#             Target file
-#         mode: str like 'rb', 'w'
-#             See builtin ``open()``
-#         block_size: int
-#             Some indication of buffering - this is a value in bytes
-#         cache_options : dict, optional
-#             Extra arguments to pass through to the cache.
-#         encoding, errors, newline: passed on to TextIOWrapper for text mode
-#         """
-#         import io
-#         print('Opening...')
-#         path = self._strip_protocol(path)
-#         print(path)
-#         if "b" not in mode:
-#             mode = mode.replace("t", "") + "b"
-
-#             text_kwargs = {
-#                 k: kwargs.pop(k)
-#                 for k in ["encoding", "errors", "newline"]
-#                 if k in kwargs
-#             }
-#             return io.TextIOWrapper(
-#                 self.open(path, mode, block_size, **kwargs), **text_kwargs
-#             )
-#         else:
-#             ac = kwargs.pop("autocommit", not self._intrans)
-#             print(f"ac:  {ac}")
-#             print(f"cache_options:  {cache_options}")
-#             print(f"path:  {path}")
-#             f = self._open(
-#                 path,
-#                 mode=mode,
-#                 block_size=block_size,
-#                 autocommit=ac,
-#                 cache_options=cache_options,
-#                 **kwargs
-#             )
-#             print("this is f after _open:  ", f)
-# #             print('These are attributes of f:  ', dir(f))
-#             print("and f.size:  ", f.size)
-#             print("and f['details']  ", f.details )
-#             if not ac:
-#                 self.transaction.files.append(f)
-#             return f
-
     def _open(
-        self, 
-        path, 
-        mode='rb', 
+        self,
+        path,
+        mode='rb',
         block_size=None,
         autocommit=True,
         cache_options="readahead",
         **kwargs
     ):
-        print("_open path:  ", path)
 
         return V3ioFile(
             fs=self,
@@ -274,7 +195,10 @@ def container_info(container):
 def prefix_path(container_name, prefix):
     if not isinstance(prefix, str):
         prefix = prefix.prefix
-    # prefix already have a leading /
+    # prefix may already have a leading / - check and add
+    # if not present
+    if not prefix.startswith("/"):
+        prefix = f'/{prefix}'
     return unslash(f'/{container_name}{prefix}')
 
 
@@ -341,7 +265,6 @@ def split_auth(url):
 
 def _details_of(c):
     return {
-#         'name': c['name'].lstrip('/'),
         'name': c['name'],
         'type': 'directory' if c['size'] is None else 'file',
         'size': c['size'] or 0,
