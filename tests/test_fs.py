@@ -95,6 +95,15 @@ def test_glob(fs: V3ioFS):
         "/bigdata/v3io-fs-test/a",
         "/bigdata/v3io-fs-test/test-file",
     ]
+    assert fs.glob("bigdata/v3io-fs-test/*") == [
+        "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/test-file",
+    ]
+
+# def test_find(fs: V3ioFS):
+#     dir_ = 'v3io-fs-test'
+#     create_file(fs._client, f'{dir_}/test-file')
+#     assert fs.find('/bigdata/v3io-fs-test') == ['/bigdata/v3io-fs-test/test-file']
     
     
 def test_rm(fs: V3ioFS, tmp_obj):

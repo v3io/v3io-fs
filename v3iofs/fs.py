@@ -77,7 +77,7 @@ class V3ioFS(AbstractFileSystem):
 
 
 
-    def ls(self, path, detail=True, **kwargs):
+    def ls(self, path, detail=False, **kwargs):
         """Lists files & directories under path"""
         path = self._strip_protocol(path)
         full_path = path
