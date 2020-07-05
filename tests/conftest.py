@@ -21,12 +21,12 @@ import pytest
 
 from v3iofs import V3ioFS
 
-host = environ.get("V3IO_API")
-access_key = environ.get("V3IO_ACCESS_KEY")
-container = "bigdata"  # TODO: configure
+host = environ.get('V3IO_API')
+access_key = environ.get('V3IO_ACCESS_KEY')
+container = 'bigdata'  # TODO: configure
 
 
-Obj = namedtuple("Obj", "path data")
+Obj = namedtuple('Obj', 'path data')
 
 
 @pytest.fixture
@@ -36,15 +36,15 @@ def fs():
     fs._client.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def tmp_obj():
     user, ts = getuser(), datetime.now().isoformat()
     client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
 
-    path = f"{user}-test-{ts}"
-    body = f"test data for {user} at {ts}".encode()
+    path = f'{user}-test-{ts}'
+    body = f'test data for {user} at {ts}'.encode()
     client.put_object(container, path, body=body)
 
-    yield Obj(f"/{container}/{path}", body)
+    yield Obj(f'/{container}/{path}', body)
 
     client.delete_object(container, path)

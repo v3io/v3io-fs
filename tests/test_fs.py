@@ -21,32 +21,76 @@ from v3iofs import V3ioFS
 from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
-container = "bigdata"  # TODO: Configuration
+container = 'bigdata'  # TODO: Configuration
 
 
 def create_file(client, path):
-    body = datetime.now().isoformat().encode("utf-8")
+    body = datetime.now().isoformat().encode('utf-8')
     client.put_object(container, path, body=body)
 
 
 def test_ls(fs: V3ioFS):
-    dir = "v3io-fs-test"
-    create_file(fs._client, f"{dir}/test-file")  # Make sure dir exists
-    path = f"/{container}/{dir}/"
-    out = fs.ls(path)
-    assert len(out) > 0, "nothing found"
-    assert all(isinstance(p, dict) for p in out), "not dict"
+    # It would be better to refactor this into conftest.py,
+    # but leveraging the pattern that exists for now.
+    # Also need to modify directory names to end in "/"
+    dir_ = 'v3io-fs-test'
+    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
+    create_file(fs._client, f'{dir_}/a/file.txt')
+    create_file(fs._client, f'{dir_}/a/file2.txt')
 
-    out = fs.ls(path, detail=False)
-    assert len(out) > 0, "nothing found"
-    assert all(isinstance(p, str) for p in out), "not string"
+    path = f'/{container}/{dir_}/'
+    out0 = fs.ls(path)
+    assert len(out0) > 0, 'nothing found'
+    assert all(isinstance(p, dict) for p in out0), 'not dict'
+
+    out1 = fs.ls(path, detail=False)
+    assert len(out1) > 0, 'nothing found'
+    assert all(isinstance(p, str) for p in out1), 'not string'
+    assert set(out1) == set(
+        ['/bigdata/v3io-fs-test/test-file', '/bigdata/v3io-fs-test/a']
+    )
+
+    out2 = fs.ls('bigdata/v3io-fs-test/a', detail=False)
+    assert set(out2) == set(
+        ['/bigdata/v3io-fs-test/a/file.txt',
+         '/bigdata/v3io-fs-test/a/file2.txt'
+         ]
+    )
+
+    path = f'/{container}/{dir_}/test-file'
+    out3 = fs.ls(path, detail=True)
+    assert len(out3) > 0, 'nothing found'
+    assert out3 == [
+        {'name': '/bigdata/v3io-fs-test/test-file',
+         'size': 26, 'type': 'file'}
+    ]
+
+    out4 = fs.ls('bigdata/v3io-fs-test/a', detail=True)
+    assert out4 == [
+        {'name': '/bigdata/v3io-fs-test/a/file.txt',
+         'size': 26, 'type': 'file'},
+        {'name': '/bigdata/v3io-fs-test/a/file2.txt',
+         'size': 26, 'type': 'file'},
+    ]
+
+    out5 = fs.ls('/bigdata/v3io-fs-test', detail=True)
+    assert len(out5) > 0, 'nothing found'
+    assert out5 == [
+        {'name': '/bigdata/v3io-fs-test/a',
+         'size': 0, 'type': 'directory'
+         },
+        {'name': '/bigdata/v3io-fs-test/test-file',
+         'size': 26, 'type': 'file'
+         },
+    ]
 
 
 def test_rm(fs: V3ioFS, tmp_obj):
     path = tmp_obj.path
     fs.rm(path)
     out = fs.ls(dirname(path), detail=False)
-    assert path not in out, "not deleted"
+    print(out)
+    assert path not in out, 'not deleted'
 
 
 def test_touch(fs: V3ioFS, tmp_obj):
@@ -54,20 +98,20 @@ def test_touch(fs: V3ioFS, tmp_obj):
     fs.touch(path)
     container, path = split_container(path)
     resp = fs._client.get_object(container, path)
-    assert resp.body == b"", "not truncated"
+    assert resp.body == b'', 'not truncated'
 
 
 now = datetime(2020, 1, 2, 3, 4, 5, 6789, tzinfo=timezone.utc)
 parse_time_cases = [
     # value, expected, raises
-    ("", None, True),
-    (now.strftime("%Y-%m-%d"), None, True),
-    (now.strftime("%Y-%m-%dT%H:%M:%S.%f%z"), now.timestamp(), False),
-    (now.strftime("%Y-%m-%dT%H:%M:%S.%fZ"), now.timestamp(), False),
+    ('', None, True),
+    (now.strftime('%Y-%m-%d'), None, True),
+    (now.strftime('%Y-%m-%dT%H:%M:%S.%f%z'), now.timestamp(), False),
+    (now.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), now.timestamp(), False),
 ]
 
 
-@pytest.mark.parametrize("value, expected, raises", parse_time_cases)
+@pytest.mark.parametrize('value, expected, raises', parse_time_cases)
 def test_parse_time(value, expected, raises):
     if raises:
         with pytest.raises(ValueError):
