@@ -60,13 +60,13 @@ class V3ioFS(AbstractFileSystem):
         May require FS-specific handling, e.g., for relative paths or links.
         """
         path = stringify_path(path)
-        protos = (cls.protocol,) if isinstance(cls.protocol, str) else cls.protocol
+        protos = (cls.protocol,) if isinstance(cls.protocol, str) else cls.protocol # NOQA
         for protocol in protos:
             path = path.rstrip("/")
             if path.startswith(protocol + "://"):
-                path = path[len(protocol) + 3 :]
+                path = path[len(protocol) + 3:]
             elif path.startswith(protocol + ":"):
-                path = path[len(protocol) + 1 :]
+                path = path[len(protocol) + 1:]
         # use of root_marker to make minimum required path, e.g., "/"
         if not path.startswith("/"):
             path = f"/{path}"
@@ -74,8 +74,6 @@ class V3ioFS(AbstractFileSystem):
 
     def _details(self, contents):
         return [_details_of(c) for c in contents]
-
-
 
     def ls(self, path, detail=False, **kwargs):
         """Lists files & directories under path"""
