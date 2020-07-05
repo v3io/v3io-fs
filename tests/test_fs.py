@@ -41,7 +41,6 @@ def test_ls(fs: V3ioFS):
     path = f'/{container}/{dir_}/'
     out0 = fs.ls(path)
     assert len(out0) > 0, 'nothing found'
-    assert all(isinstance(p, dict) for p in out0), 'not dict'
 
     out1 = fs.ls(path, detail=False)
     assert len(out1) > 0, 'nothing found'
@@ -82,6 +81,22 @@ def test_ls(fs: V3ioFS):
         {'name': '/bigdata/v3io-fs-test/test-file',
          'size': 26, 'type': 'file'
          },
+    ]
+
+
+def test_glob(fs: V3ioFS):
+    dir_ = 'v3io-fs-test'
+    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
+    create_file(fs._client, f'{dir_}/a/file.txt')
+    create_file(fs._client, f'{dir_}/a/file2.txt')
+    assert fs.glob("bigdata/v3io-fs-test") == ["/bigdata/v3io-fs-test"]
+    assert fs.glob("bigdata/v3io-fs-test/") == [
+        "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/test-file",
+    ]
+    assert fs.glob("bigdata/v3io-fs-test/*") == [
+        "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/test-file",
     ]
 
 
