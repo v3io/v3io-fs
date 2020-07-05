@@ -85,6 +85,18 @@ def test_ls(fs: V3ioFS):
     ]
 
 
+def test_glob(fs: V3ioFS):
+    dir_ = 'v3io-fs-test'
+    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
+    create_file(fs._client, f'{dir_}/a/file.txt')
+    create_file(fs._client, f'{dir_}/a/file2.txt')
+    assert fs.glob("bigdata/v3io-fs-test") == ["/bigdata/v3io-fs-test"]
+    assert fs.glob("bigdata/v3io-fs-test/") == [
+        "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/test-file",
+    ]
+    
+    
 def test_rm(fs: V3ioFS, tmp_obj):
     path = tmp_obj.path
     fs.rm(path)

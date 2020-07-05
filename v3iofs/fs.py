@@ -19,6 +19,7 @@ from os import environ
 from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
+from fsspec.utils import stringify_path
 from v3io.dataplane import Client
 
 from .path import split_container, unslash
@@ -53,8 +54,28 @@ class V3ioFS(AbstractFileSystem):
             transport_kind='requests',
         )
 
+    @classmethod
+    def _strip_protocol(cls, path):
+        """ Turn path from fully-qualified to file-system-specific
+        May require FS-specific handling, e.g., for relative paths or links.
+        """
+        path = stringify_path(path)
+        protos = (cls.protocol,) if isinstance(cls.protocol, str) else cls.protocol
+        for protocol in protos:
+            path = path.rstrip("/")
+            if path.startswith(protocol + "://"):
+                path = path[len(protocol) + 3 :]
+            elif path.startswith(protocol + ":"):
+                path = path[len(protocol) + 1 :]
+        # use of root_marker to make minimum required path, e.g., "/"
+        if not path.startswith("/"):
+            path = f"/{path}"
+        return path or cls.root_marker
+
     def _details(self, contents):
         return [_details_of(c) for c in contents]
+
+
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
