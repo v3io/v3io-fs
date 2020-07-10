@@ -26,7 +26,6 @@ def test_dask(tmp_obj):
         'V3IO_ACCESS_KEY': access_key,
     }
     file = db.read_text(uri, storage_options=storage_options)
-    out = file.compute(scheduler='single-threaded')
-    assert len(out) == 1, f'compute returned: {out!r}'
-    data = out[0].encode('utf-8')
+    data, = file.compute(scheduler='single-threaded')
+    data = data.encode('utf-8')
     assert tmp_obj.data == data, 'bad data'

@@ -44,8 +44,9 @@ class V3ioFS(AbstractFileSystem):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._v3io_api = v3io_api or environ.get('V3IO_API')
-        self._v3io_access_key = v3io_access_key or \
-            environ.get('V3IO_ACCESS_KEY')
+        self._v3io_access_key = v3io_access_key or environ.get(
+            'V3IO_ACCESS_KEY'
+        )
 
         self._client = Client(
             endpoint=self._v3io_api,
@@ -64,9 +65,10 @@ class V3ioFS(AbstractFileSystem):
             return self._list_containers(detail)
 
         resp = self._client.get_container_contents(
-            container=container, path=path,
+            container=container,
+            path=path,
             get_all_attributes=True,
-            raise_for_status='never',
+            raise_for_status=[HTTPStatus.OK],
         )
 
         dirs = _resp_dirs(resp, container)
@@ -77,7 +79,9 @@ class V3ioFS(AbstractFileSystem):
             # '/a/b/c' -> ('/a/b', 'c')
             dirname, _, filename = path.rpartition('/')
             resp = self._client.get_container_contents(
-                container=container, path=dirname,
+                container=container,
+                path=dirname,
+                raise_for_status=[HTTPStatus.OK],
             )
             for obj in getattr(resp.output, 'contents', []):
                 file = object_info(container, obj)
@@ -108,9 +112,9 @@ class V3ioFS(AbstractFileSystem):
             raise ValueError(f'bad path: {path:r}')
 
         self._client.delete_object(
-            container=container, path=path, raise_for_status=[
-                HTTPStatus.NO_CONTENT
-                ],
+            container=container,
+            path=path,
+            raise_for_status=[HTTPStatus.NO_CONTENT],
         )
 
     def touch(self, path, truncate=True, **kwargs):
@@ -119,7 +123,8 @@ class V3ioFS(AbstractFileSystem):
 
         container, path = split_container(path)
         self._client.put_object(
-            container, path, raise_for_status=[HTTPStatus.OK])
+            container, path, raise_for_status=[HTTPStatus.OK]
+        )
 
     def info(self, path, **kw):
         """Details of entry at path
@@ -156,8 +161,14 @@ class V3ioFS(AbstractFileSystem):
         raise FileNotFoundError(path)
 
     def _open(
-        self, path, mode='rb', block_size=None, autocommit=True,
-            cache_options=None, **kw):
+        self,
+        path,
+        mode='rb',
+        block_size=None,
+        autocommit=True,
+        cache_options=None,
+        **kw,
+    ):
         return V3ioFile(
             fs=self,
             path=path,
@@ -213,11 +224,11 @@ def info_of(container_name, obj, name_key):
     if hasattr(obj, 'access_time'):
         info['atime'] = parse_time(obj.access_time)
     if hasattr(obj, 'mode'):
-        info['mode'] = int(obj.mode[1:], base=8),  # '040755'
+        info['mode'] = (int(obj.mode[1:], base=8),)  # '040755'
     if hasattr(obj, 'gid'):
-        info['gid'] = int(obj.gid, 16),
+        info['gid'] = (int(obj.gid, 16),)
     if hasattr(obj, 'uid'):
-        info['uid'] = int(obj.uid, 16),
+        info['uid'] = (int(obj.uid, 16),)
     return info
 
 
