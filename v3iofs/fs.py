@@ -21,8 +21,11 @@ from urllib.parse import urlparse
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
 
-from .path import split_container, unslash
 from .file import V3ioFile
+from .path import split_container, unslash
+
+_file_key = 'key'
+_dir_key = 'prefix'
 
 
 class V3ioFS(AbstractFileSystem):
@@ -44,18 +47,14 @@ class V3ioFS(AbstractFileSystem):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._v3io_api = v3io_api or environ.get('V3IO_API')
-        self._v3io_access_key = v3io_access_key or environ.get(
-            'V3IO_ACCESS_KEY'
-        )
+        self._v3io_access_key = \
+            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
 
         self._client = Client(
             endpoint=self._v3io_api,
             access_key=self._v3io_access_key,
             transport_kind='requests',
         )
-
-    def _details(self, contents):
-        return [_details_of(c) for c in contents]
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
@@ -64,39 +63,51 @@ class V3ioFS(AbstractFileSystem):
         if not container:
             return self._list_containers(detail)
 
+        err = False
+        try:
+            resp = self._client.get_container_contents(
+                container=container,
+                path=path,
+                get_all_attributes=True,
+                raise_for_status=[HTTPStatus.OK],
+            )
+        except RuntimeError:
+            err = True
+
+        # If not data, try to find file in parent directory
+        if err or not _has_data(resp):
+            return [self._ls_file(container, path, detail)]
+
+        out = (
+            _resp_dirs(resp, container, detail) +
+            _resp_files(resp, container, detail)
+        )
+
+        if not out:
+            raise FileNotFoundError(f'{full_path!r} not found')
+
+        return out
+
+    def _ls_file(self, container, path, detail):
+        # '/a/b/c' -> ('/a/b', 'c')
+        dirname, _, filename = path.rpartition('/')
         resp = self._client.get_container_contents(
             container=container,
-            path=path,
+            path=dirname,
             get_all_attributes=True,
             raise_for_status=[HTTPStatus.OK],
         )
 
-        dirs = _resp_dirs(resp, container)
-        files = _resp_files(resp, container)
+        full_path = f'/{container}/{path}'
+        contents = getattr(resp.output, 'contents', [])
+        objs = [obj for obj in contents if obj.key == path]
+        if not objs:
+            raise FileNotFoundError(full_path)
 
-        # If not data, try to find in parent directory
-        if not _has_data(resp):
-            # '/a/b/c' -> ('/a/b', 'c')
-            dirname, _, filename = path.rpartition('/')
-            resp = self._client.get_container_contents(
-                container=container,
-                path=dirname,
-                raise_for_status=[HTTPStatus.OK],
-            )
-            for obj in getattr(resp.output, 'contents', []):
-                file = object_info(container, obj)
-                if file['name'] == full_path:
-                    files = [file]
-                    break
-
-        pathlist = dirs + files
-        if not pathlist:
-            raise FileNotFoundError(f'{full_path!r} not found')
-
-        if detail:
-            return self._details(pathlist)
-
-        return [file['name'] for file in files]
+        obj = objs[0]
+        if not detail:
+            return full_path
+        return info_of(container, obj, _file_key)
 
     def _list_containers(self, detail):
         resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK])
@@ -147,8 +158,7 @@ class V3ioFS(AbstractFileSystem):
         """
 
         out = self.ls(path, detail=True, **kw)
-        spath = path.rstrip('/')
-        entries = [o for o in out if o['name'].rstrip('/') == spath]
+        entries = [o for o in out if unslash(o['name']) == unslash(path)]
 
         if len(entries) == 1:
             entry = entries[0]
@@ -184,6 +194,15 @@ def container_path(container):
     return f'/{container.name}'
 
 
+def parse_time(creation_date):
+    # '2020-03-26T09:42:57.504000+00:00'
+    # '2020-03-26T09:42:57.71Z'
+    i = creation_date.rfind('+')  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
 def container_info(container):
     return {
         'name': container.name,
@@ -192,53 +211,37 @@ def container_info(container):
     }
 
 
-def prefix_path(container_name, prefix):
-    if not isinstance(prefix, str):
-        prefix = prefix.prefix
-    # prefix already have a leading /
-    return unslash(f'/{container_name}{prefix}')
+_missing = object()
+_extra_obj_attrs = [
+    # dest, src, convert
+    ('created', 'creating_time', parse_time),
+    ('atime', 'access_time', parse_time),
+    ('mode', 'mode', lambda v: int(v[1:], base=8)),  # '040755'
+    ('gid', 'gid', lambda v: int(v, 16)),
+    ('uid', 'uid', lambda v: int(v, 16)),
+]
 
 
-def prefix_info(container_name, prefix):
-    return info_of(container_name, prefix, 'prefix')
-
-
-def object_path(container_name, object):
-    # object.key already have a leading /
-    return f'/{container_name}{object.key}'
-
-
-def object_info(container_name, object):
-    return info_of(container_name, object, 'key')
+def obj_path(container, obj, name_key):
+    path = unslash(getattr(obj, name_key))
+    return f'/{container}/{path}'
 
 
 def info_of(container_name, obj, name_key):
     info = {
-        'name': prefix_path(container_name, getattr(obj, name_key)),
-        'size': getattr(obj, 'size', None),
+        'name': obj_path(container_name, obj, name_key),
+        'type': 'directory' if hasattr(obj, 'size') else 'file',
+        'size': getattr(obj, 'size', 0),
         'mtime': parse_time(obj.last_modified),
     }
 
-    if hasattr(obj, 'creating_time'):
-        info['created'] = parse_time(obj.creating_time)
-    if hasattr(obj, 'access_time'):
-        info['atime'] = parse_time(obj.access_time)
-    if hasattr(obj, 'mode'):
-        info['mode'] = (int(obj.mode[1:], base=8),)  # '040755'
-    if hasattr(obj, 'gid'):
-        info['gid'] = (int(obj.gid, 16),)
-    if hasattr(obj, 'uid'):
-        info['uid'] = (int(obj.uid, 16),)
+    for src, dest, conv in _extra_obj_attrs:
+        val = getattr(obj, src, _missing)
+        if val is _missing:
+            continue
+        info[dest] = conv(val)
+
     return info
-
-
-def parse_time(creation_date):
-    # '2020-03-26T09:42:57.504000+00:00'
-    # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind('+')  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
-    dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
 
 
 def split_auth(url):
@@ -260,30 +263,28 @@ def split_auth(url):
     return (u.geturl(), key)
 
 
-def _details_of(c):
-    return {
-        'name': c['name'].lstrip('/'),
-        'type': 'directory' if c['size'] is None else 'file',
-        'size': c['size'] or 0,
-    }
-
-
-def _resp_dirs(resp, container):
+def _resp_dirs(resp, container, detail):
     if not hasattr(resp.output, 'common_prefixes'):
         return []
 
-    prefixes = resp.output.common_prefixes
-    return [prefix_info(container, p) for p in prefixes]
+    objs = resp.output.common_prefixes
+    if not detail:
+        return [obj_path(container, obj, _dir_key) for obj in objs]
+
+    return [info_of(container, obj, _dir_key) for obj in objs]
 
 
-def _resp_files(resp, container):
+def _resp_files(resp, container, detail):
     if not hasattr(resp.output, 'contents'):
         return []
 
-    objects = resp.output.contents
-    return [object_info(container, o) for o in objects]
+    objs = resp.output.contents
+    if not detail:
+        return [obj_path(container, obj, _file_key) for obj in objs]
+
+    return [info_of(container, obj, _file_key) for obj in objs]
 
 
 def _has_data(resp):
     out = resp.output
-    return any(hasattr(out, attr) for attr in ('common_prefixes', 'contents'))
+    return hasattr(out, 'common_prefixes') or hasattr(out, 'contents')
