@@ -51,3 +51,23 @@ def tmp_obj():
     yield Obj(f'/{test_container}/{path}', body)
 
     client.delete_object(test_container, path)
+
+
+@pytest.fixture
+def new_file():
+    _client, _path = None, ''
+
+    def create_file(client, path):
+        nonlocal _client, _path
+
+        _client, _path = client, path
+        body = datetime.now().isoformat().encode('utf-8')
+        client.put_object(test_container, path, body=body)
+
+    yield create_file
+
+    _client.delete_object(
+        container=test_container,
+        path=_path,
+        raise_for_status=[HTTPStatus.NO_CONTENT],
+    )

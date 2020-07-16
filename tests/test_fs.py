@@ -23,13 +23,8 @@ from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
 
-def create_file(client, path):
-    body = datetime.now().isoformat().encode('utf-8')
-    client.put_object(test_container, path, body=body)
-
-
-def test_ls(fs: V3ioFS):
-    create_file(fs._client, f'{test_dir}/test-file')  # Make sure dir exists
+def test_ls(fs: V3ioFS, new_file):
+    new_file(fs._client, f'{test_dir}/test-file')  # Make sure dir exists
     path = f'/{test_container}/{test_dir}/'
     out = fs.ls(path)
     assert len(out) > 0, 'nothing found'
