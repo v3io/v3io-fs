@@ -36,7 +36,7 @@ class V3ioFile(AbstractBufferedFile):
         """ Write one part of a multi-block file upload
 
         Parameters
-        ==========
+        ----------
         final: bool
             This is the last block, so should complete file, if
             self.autocommit is True.

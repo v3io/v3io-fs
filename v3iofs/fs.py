@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from datetime import datetime, timezone
 from http import HTTPStatus
 from os import environ
@@ -20,8 +21,11 @@ from urllib.parse import urlparse
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
 
-from .path import split_container, unslash
 from .file import V3ioFile
+from .path import split_container, unslash
+
+_file_key = 'key'
+_dir_key = 'prefix'
 
 
 class V3ioFS(AbstractFileSystem):
@@ -43,8 +47,8 @@ class V3ioFS(AbstractFileSystem):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._v3io_api = v3io_api or environ.get('V3IO_API')
-        self._v3io_access_key = v3io_access_key or \
-            environ.get('V3IO_ACCESS_KEY')
+        self._v3io_access_key = \
+            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
 
         self._client = Client(
             endpoint=self._v3io_api,
@@ -54,32 +58,59 @@ class V3ioFS(AbstractFileSystem):
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
+        full_path = path
         container, path = split_container(path)
-
         if not container:
             return self._list_containers(detail)
 
+        err = False
+        try:
+            resp = self._client.get_container_contents(
+                container=container,
+                path=path,
+                get_all_attributes=True,
+                raise_for_status=[HTTPStatus.OK],
+            )
+        except RuntimeError:
+            err = True
+
+        # If not data, try to find file in parent directory
+        if err or not _has_data(resp):
+            return [self._ls_file(container, path, detail)]
+
+        out = (
+            _resp_dirs(resp, container, detail) +
+            _resp_files(resp, container, detail)
+        )
+
+        if not out:
+            raise FileNotFoundError(f'{full_path!r} not found')
+
+        return out
+
+    def _ls_file(self, container, path, detail):
+        # '/a/b/c' -> ('/a/b', 'c')
+        dirname, _, filename = path.rpartition('/')
         resp = self._client.get_container_contents(
             container=container,
-            path=path,
+            path=dirname,
             get_all_attributes=True,
             raise_for_status=[HTTPStatus.OK],
         )
 
-        prefixes = resp.output.common_prefixes  # directories
-        fn = prefix_info if detail else prefix_path
-        dirs = [fn(container, p) for p in prefixes]
+        full_path = f'/{container}/{path}'
+        contents = getattr(resp.output, 'contents', [])
+        objs = [obj for obj in contents if obj.key == path]
+        if not objs:
+            raise FileNotFoundError(full_path)
 
-        objects = resp.output.contents  # files
-        fn = object_info if detail else object_path
-        files = [fn(container, o) for o in objects]
-
-        return dirs + files
+        obj = objs[0]
+        if not detail:
+            return full_path
+        return info_of(container, obj, _file_key)
 
     def _list_containers(self, detail):
-        resp = self._client.get_containers(
-            raise_for_status=[HTTPStatus.OK],
-        )
+        resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK])
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
@@ -100,15 +131,54 @@ class V3ioFS(AbstractFileSystem):
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
             raise ValueError('only truncate touch supported')
+
         container, path = split_container(path)
         self._client.put_object(
-            container, path,
-            raise_for_status=[HTTPStatus.OK],
+            container, path, raise_for_status=[HTTPStatus.OK]
         )
 
+    def info(self, path, **kw):
+        """Details of entry at path
+
+        Returns a single dictionary, with exactly the same information as
+        ``ls`` would with ``detail=True``.
+
+        Parameters
+        ----------
+        path: str
+            Path to get info for
+        **kw:
+            Keyword arguments passed to `ls`
+
+        Returns
+        -------
+        dict
+            keys: name (full path in the FS), size (in bytes), type (file,
+            directory, or something else) and other FS-specific keys.
+        """
+
+        out = self.ls(path, detail=True, **kw)
+        entries = [o for o in out if unslash(o['name']) == unslash(path)]
+
+        if len(entries) == 1:
+            entry = entries[0]
+            entry.setdefault('size', None)
+            return entry
+
+        if len(entries) >= 1 or out:
+            return {'name': path, 'size': 0, 'type': 'directory'}
+
+        raise FileNotFoundError(path)
+
     def _open(
-        self, path, mode='rb', block_size=None, autocommit=True,
-            cache_options=None, **kw):
+        self,
+        path,
+        mode='rb',
+        block_size=None,
+        autocommit=True,
+        cache_options=None,
+        **kw,
+    ):
         return V3ioFile(
             fs=self,
             path=path,
@@ -116,11 +186,21 @@ class V3ioFS(AbstractFileSystem):
             block_size=block_size,
             autocommit=autocommit,
             cache_options=cache_options,
-            **kw)
+            **kw,
+        )
 
 
 def container_path(container):
     return f'/{container.name}'
+
+
+def parse_time(creation_date):
+    # '2020-03-26T09:42:57.504000+00:00'
+    # '2020-03-26T09:42:57.71Z'
+    i = creation_date.rfind('+')  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
 
 
 def container_info(container):
@@ -131,46 +211,37 @@ def container_info(container):
     }
 
 
-def prefix_path(container_name, prefix):
-    if not isinstance(prefix, str):
-        prefix = prefix.prefix
-    # prefix already have a leading /
-    return unslash(f'/{container_name}{prefix}')
+_missing = object()
+_extra_obj_attrs = [
+    # dest, src, convert
+    ('created', 'creating_time', parse_time),
+    ('atime', 'access_time', parse_time),
+    ('mode', 'mode', lambda v: int(v[1:], base=8)),  # '040755'
+    ('gid', 'gid', lambda v: int(v, 16)),
+    ('uid', 'uid', lambda v: int(v, 16)),
+]
 
 
-def prefix_info(container_name, prefix):
-    return info_of(container_name, prefix, 'prefix')
-
-
-def object_path(container_name, object):
-    # object.key already have a leading /
-    return f'/{container_name}{object.key}'
-
-
-def object_info(container_name, object):
-    return info_of(container_name, object, 'key')
+def obj_path(container, obj, name_key):
+    path = unslash(getattr(obj, name_key))
+    return f'/{container}/{path}'
 
 
 def info_of(container_name, obj, name_key):
-    return {
-        'name': prefix_path(container_name, getattr(obj, name_key)),
-        'size': getattr(obj, 'size', None),
-        'created': parse_time(obj.creating_time),
+    info = {
+        'name': obj_path(container_name, obj, name_key),
+        'type': 'directory' if hasattr(obj, 'size') else 'file',
+        'size': getattr(obj, 'size', 0),
         'mtime': parse_time(obj.last_modified),
-        'atime': parse_time(obj.access_time),
-        'mode': int(obj.mode[1:], base=8),  # '040755'
-        'gid': int(obj.gid, 16),
-        'uid': int(obj.uid, 16),
     }
 
+    for src, dest, conv in _extra_obj_attrs:
+        val = getattr(obj, src, _missing)
+        if val is _missing:
+            continue
+        info[dest] = conv(val)
 
-def parse_time(creation_date):
-    # '2020-03-26T09:42:57.504000+00:00'
-    # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind('+')  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
-    dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
+    return info
 
 
 def split_auth(url):
@@ -190,3 +261,30 @@ def split_auth(url):
     _, key = auth.split(':', 1)
     u = u._replace(netloc=netloc)
     return (u.geturl(), key)
+
+
+def _resp_dirs(resp, container, detail):
+    if not hasattr(resp.output, 'common_prefixes'):
+        return []
+
+    objs = resp.output.common_prefixes
+    if not detail:
+        return [obj_path(container, obj, _dir_key) for obj in objs]
+
+    return [info_of(container, obj, _dir_key) for obj in objs]
+
+
+def _resp_files(resp, container, detail):
+    if not hasattr(resp.output, 'contents'):
+        return []
+
+    objs = resp.output.contents
+    if not detail:
+        return [obj_path(container, obj, _file_key) for obj in objs]
+
+    return [info_of(container, obj, _file_key) for obj in objs]
+
+
+def _has_data(resp):
+    out = resp.output
+    return hasattr(out, 'common_prefixes') or hasattr(out, 'contents')
