@@ -46,15 +46,7 @@ class V3ioFS(AbstractFileSystem):
     def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._v3io_api = v3io_api or environ.get('V3IO_API')
-        self._v3io_access_key = \
-            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
-
-        self._client = Client(
-            endpoint=self._v3io_api,
-            access_key=self._v3io_access_key,
-            transport_kind='requests',
-        )
+        self._client = _new_client(v3io_api, v3io_access_key)
 
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
@@ -288,3 +280,15 @@ def _resp_files(resp, container, detail):
 def _has_data(resp):
     out = resp.output
     return hasattr(out, 'common_prefixes') or hasattr(out, 'contents')
+
+
+def _new_client(v3io_api=None, v3io_access_key=None):
+    v3io_api = v3io_api or environ.get('V3IO_API')
+    v3io_access_key = \
+        v3io_access_key or environ.get('V3IO_ACCESS_KEY')
+
+    return Client(
+        endpoint=v3io_api,
+        access_key=v3io_access_key,
+        transport_kind='requests',
+    )
