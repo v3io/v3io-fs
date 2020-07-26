@@ -59,4 +59,5 @@ def test_read_csv(read_fn, data, client, new_file):
     new_file(client, file_path, data)
 
     df = read_fn(f'v3io://{file_path}')
-    assert (5, 4) == df.shape, 'bad read'
+    assert 4 == len(df.columns), '# of columns'
+    assert 5 == len(df), '# of rows'
