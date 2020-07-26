@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 import dask.bag as db
-import data.dataframe as dd
+import dask.dataframe as dd
 import pytest
 from conftest import test_container, test_dir
 
