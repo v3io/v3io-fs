@@ -143,7 +143,8 @@ class V3ioFS(AbstractFileSystem):
 
         container, path = split_container(path)
         self._client.put_object(
-            container, path, raise_for_status=[HTTPStatus.OK])
+            container, path, raise_for_status=[HTTPStatus.OK]
+        )
 
     def info(self, path, **kw):
         """Details of entry at path
