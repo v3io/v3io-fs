@@ -22,9 +22,8 @@ from fsspec.spec import AbstractFileSystem
 from fsspec.utils import stringify_path
 from v3io.dataplane import Client
 
-from .path import split_container, unslash
 from .file import V3ioFile
-
+from .path import split_container, unslash
 
 class V3ioFS(AbstractFileSystem):
     """File system driver to v3io
