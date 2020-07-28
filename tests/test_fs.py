@@ -104,7 +104,6 @@ def test_rm(fs: V3ioFS, tmp_obj):
     path = tmp_obj.path
     fs.rm(path)
     out = fs.ls(dirname(path), detail=False)
-    print(out)
     assert path not in out, 'not deleted'
 
 
