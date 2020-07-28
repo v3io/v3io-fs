@@ -25,6 +25,7 @@ from v3io.dataplane import Client
 from .file import V3ioFile
 from .path import split_container, unslash
 
+
 class V3ioFS(AbstractFileSystem):
     """File system driver to v3io
 
@@ -97,7 +98,7 @@ class V3ioFS(AbstractFileSystem):
             # '/a/b/c' -> ('/a/b', 'c')
             dirname, _, filename = path.rpartition('/')
             resp = self._client.get_container_contents(
-                container=container, 
+                container=container,
                 path=dirname,
             )
             for obj in getattr(resp.output, 'contents', []):
