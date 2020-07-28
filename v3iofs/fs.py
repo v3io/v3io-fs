@@ -83,7 +83,8 @@ class V3ioFS(AbstractFileSystem):
             return self._list_containers(detail)
 
         resp = self._client.get_container_contents(
-            container=container, path=path,
+            container=container,
+            path=path,
             get_all_attributes=True,
             raise_for_status='never',
         )
@@ -96,7 +97,8 @@ class V3ioFS(AbstractFileSystem):
             # '/a/b/c' -> ('/a/b', 'c')
             dirname, _, filename = path.rpartition('/')
             resp = self._client.get_container_contents(
-                container=container, path=dirname,
+                container=container, 
+                path=dirname,
             )
             for obj in getattr(resp.output, 'contents', []):
                 file = object_info(container, obj)
@@ -130,9 +132,9 @@ class V3ioFS(AbstractFileSystem):
             raise ValueError(f'bad path: {path:r}')
 
         self._client.delete_object(
-            container=container, path=path, raise_for_status=[
-                HTTPStatus.NO_CONTENT
-                ],
+            container=container,
+            path=path,
+            raise_for_status=[HTTPStatus.NO_CONTENT],
         )
 
     def touch(self, path, truncate=True, **kwargs):
@@ -184,7 +186,7 @@ class V3ioFS(AbstractFileSystem):
         block_size=None,
         autocommit=True,
         cache_options="readahead",
-        **kwargs
+        **kw,
     ):
 
         return V3ioFile(
@@ -194,7 +196,7 @@ class V3ioFS(AbstractFileSystem):
             block_size=block_size or self.blocksize,
             autocommit=autocommit,
             cache_options=cache_options,
-            **kwargs,
+            **kw,
         )
 
 
