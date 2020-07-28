@@ -44,8 +44,8 @@ class V3ioFS(AbstractFileSystem):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._v3io_api = v3io_api or environ.get('V3IO_API')
-        self._v3io_access_key = v3io_access_key or \
-            environ.get('V3IO_ACCESS_KEY')
+        self._v3io_access_key = \
+            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
 
         self._client = Client(
             endpoint=self._v3io_api,
