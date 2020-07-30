@@ -20,6 +20,10 @@ def test_fetch_range(fs: V3ioFS, tmp_obj):
     start, end = 3, len(tmp_obj.data) - 3
     data = v3f._fetch_range(start, end)
     expected = tmp_obj.data[start:end]
+    print("expected...")
+    print(expected)
+    print("data...")
+    print(data)
     assert expected == data, 'bad data'
 
 

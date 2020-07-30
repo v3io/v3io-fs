@@ -87,7 +87,7 @@ class V3ioFS(AbstractFileSystem):
             container=container,
             path=path,
             get_all_attributes=True,
-            raise_for_status=[HTTPStatus.OK],
+            raise_for_status='never',
         )
 
         dirs = _resp_dirs(resp, container)

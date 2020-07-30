@@ -23,11 +23,7 @@ from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
 
-def test_ls(fs: V3ioFS, new_file):
-    # Also need to modify directory names to end in "/"
-    new_file.create_file(fs._client, f'{test_dir}/test-file')
-    new_file.create_file(fs._client, f'{test_dir}/a/file.txt')
-    new_file.create_file(fs._client, f'{test_dir}/a/file2.txt')
+def test_ls(fs: V3ioFS, tmp_obj):
 
     path = f'/{test_container}/{test_dir}/'
     out0 = fs.ls(path)
@@ -36,8 +32,11 @@ def test_ls(fs: V3ioFS, new_file):
     out1 = fs.ls(path, detail=False)
     assert len(out1) > 0, 'nothing found'
     assert all(isinstance(p, str) for p in out1), 'not string'
+    out1 = [f for f in out1 if not 'iguazio' in f]
     assert set(out1) == set(
-        ['/bigdata/v3io-fs-test/test-file', '/bigdata/v3io-fs-test/a']
+        ['/bigdata/v3io-fs-test/test-file',
+         '/bigdata/v3io-fs-test/a',
+         "/bigdata/v3io-fs-test/b"]
     )
 
     out2 = fs.ls('bigdata/v3io-fs-test/a', detail=False)
@@ -64,9 +63,13 @@ def test_ls(fs: V3ioFS, new_file):
     ]
 
     out5 = fs.ls('/bigdata/v3io-fs-test', detail=True)
+    out5 = [f for f in out5 if 'iguazio' not in f['name']]
     assert len(out5) > 0, 'nothing found'
     assert out5 == [
         {'name': '/bigdata/v3io-fs-test/a',
+         'size': 0, 'type': 'directory'
+         },
+        {'name': '/bigdata/v3io-fs-test/b',
          'size': 0, 'type': 'directory'
          },
         {'name': '/bigdata/v3io-fs-test/test-file',
@@ -75,17 +78,20 @@ def test_ls(fs: V3ioFS, new_file):
     ]
 
 
-def test_glob(fs: V3ioFS, new_file):
-    new_file.create_file(fs._client, f'{test_dir}/test-file')
-    new_file.create_file(fs._client, f'{test_dir}/a/file.txt')
-    new_file.create_file(fs._client, f'{test_dir}/a/file2.txt')
+def test_glob(fs: V3ioFS, tmp_obj):
     assert fs.glob("bigdata/v3io-fs-test") == ["/bigdata/v3io-fs-test"]
-    assert fs.glob("bigdata/v3io-fs-test/") == [
+    outfiles = fs.glob("bigdata/v3io-fs-test/")
+    outfiles = [f for f in outfiles if not 'iguazio' in f]
+    assert outfiles == [
         "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/b",
         "/bigdata/v3io-fs-test/test-file",
     ]
-    assert fs.glob("bigdata/v3io-fs-test/*") == [
+    outfiles2 = fs.glob("bigdata/v3io-fs-test/*")
+    outfiles2 = [f for f in outfiles if not 'iguazio' in f]
+    assert outfiles2 == [
         "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/b",
         "/bigdata/v3io-fs-test/test-file",
     ]
 

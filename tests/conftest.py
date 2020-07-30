@@ -48,26 +48,24 @@ def tmp_obj():
     resp = client.put_object(test_container, path, body=body)
     assert resp.status_code == HTTPStatus.OK, 'create failed'
 
+    body = datetime.now().isoformat().encode('utf-8')
+    # Add 2nd-level object
+    path2 = f'{test_dir}/test-file'
+    resp = client.put_object(test_container, path2, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path2 failed'
+
+    path3 = f'{test_dir}/a/file.txt'
+    resp = client.put_object(test_container, path3, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path3 failed'
+
+    path4 = f'{test_dir}/b/file2.txt'
+    resp = client.put_object(test_container, path4, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path4 failed'
+
+    path5 = f'{test_dir}/a/file2.txt'
+    resp = client.put_object(test_container, path5, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path5 failed'
+
     yield Obj(f'/{test_container}/{path}', body)
 
     client.delete_object(test_container, path)
-
-
-@pytest.fixture()
-def new_file():
-    _client, _path = None, ''
-
-    def create_file(client, path):
-        nonlocal _client, _path
-
-        _client, _path = client, path
-        body = datetime.now().isoformat().encode('utf-8')
-        _client.put_object(test_container, path, body=body)
-
-    yield create_file
-
-    _client.delete_object(
-        container=test_container,
-        path=_path,
-        raise_for_status=[HTTPStatus.NO_CONTENT],
-    )
