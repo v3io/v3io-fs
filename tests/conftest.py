@@ -69,3 +69,15 @@ def tmp_obj():
     yield Obj(f'/{test_container}/{path}', body)
 
     client.delete_object(test_container, path)
+
+
+@pytest.fixture()
+def tmp_file():
+    client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
+    path = f'{test_dir}/test_file.txt'
+    body = 'In god we trust; all others must bring data.'.encode()
+    resp = client.put_object(test_container, path, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create failed'
+
+    yield Obj(f'/{test_container}/{path}', body)
+    client.delete_object(test_container, path)
