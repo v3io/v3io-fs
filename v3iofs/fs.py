@@ -206,15 +206,6 @@ def container_path(container):
     return f'/{container.name}'
 
 
-def parse_time(creation_date):
-    # '2020-03-26T09:42:57.504000+00:00'
-    # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind('+')  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
-    dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
-
-
 def container_info(container):
     return {
         'name': container.name,
@@ -264,6 +255,15 @@ def info_of(container_name, obj, name_key):
     if hasattr(obj, 'uid'):
         info['uid'] = int(obj.uid, 16),
     return info
+
+
+def parse_time(creation_date):
+    # '2020-03-26T09:42:57.504000+00:00'
+    # '2020-03-26T09:42:57.71Z'
+    i = creation_date.rfind('+')  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
 
 
 def split_auth(url):
