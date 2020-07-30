@@ -15,23 +15,27 @@
 from v3iofs import V3ioFile, V3ioFS
 
 
-def test_fetch_range(fs: V3ioFS, tmp_obj):
-    v3f = V3ioFile(fs, tmp_obj.path)
-    start, end = 3, len(tmp_obj.data) - 3
+def test_fetch_range(fs: V3ioFS, tmp_file):
+    v3f = V3ioFile(fs, tmp_file.path)
+    start, end = 3, len(tmp_file.data) - 3
     data = v3f._fetch_range(start, end)
-    expected = tmp_obj.data[start:end]
+    expected = tmp_file.data[start:end]
+    print("expected...")
+    print(expected)
+    print("data...")
+    print(data)
     assert expected == data, 'bad data'
 
 
-def test_upload_chunk(fs: V3ioFS, tmp_obj):
-    v3f = V3ioFile(fs, tmp_obj.path, 'ab')
+def test_upload_chunk(fs: V3ioFS, tmp_file):
+    v3f = V3ioFile(fs, tmp_file.path, 'ab')
     chunk = b'::chunk of data'
     v3f.buffer.write(chunk)
     v3f._upload_chunk()
 
-    expected = tmp_obj.data + chunk
+    expected = tmp_file.data + chunk
 
-    with fs.open(tmp_obj.path, 'rb') as fp:
+    with fs.open(tmp_file.path, 'rb') as fp:
         data = fp.read()
 
     assert expected == data, 'bad data'

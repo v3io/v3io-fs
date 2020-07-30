@@ -14,6 +14,7 @@
 
 from collections import namedtuple
 from datetime import datetime
+from http import HTTPStatus
 from getpass import getuser
 from os import environ
 
@@ -23,7 +24,8 @@ from v3iofs import V3ioFS
 
 host = environ.get('V3IO_API')
 access_key = environ.get('V3IO_ACCESS_KEY')
-container = 'bigdata'  # TODO: configure
+test_container = 'bigdata'
+test_dir = 'v3io-fs-test'
 
 
 Obj = namedtuple('Obj', 'path data')
@@ -41,10 +43,41 @@ def tmp_obj():
     user, ts = getuser(), datetime.now().isoformat()
     client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
 
-    path = f'{user}-test-{ts}'
+    path = f'{test_dir}/{user}-test-{ts}'
     body = f'test data for {user} at {ts}'.encode()
-    client.put_object(container, path, body=body)
+    resp = client.put_object(test_container, path, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create failed'
 
-    yield Obj(f'/{container}/{path}', body)
+    body = datetime.now().isoformat().encode('utf-8')
+    # Add 2nd-level object
+    path2 = f'{test_dir}/test-file'
+    resp = client.put_object(test_container, path2, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path2 failed'
 
-    client.delete_object(container, path)
+    path3 = f'{test_dir}/a/file.txt'
+    resp = client.put_object(test_container, path3, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path3 failed'
+
+    path4 = f'{test_dir}/b/file2.txt'
+    resp = client.put_object(test_container, path4, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path4 failed'
+
+    path5 = f'{test_dir}/a/file2.txt'
+    resp = client.put_object(test_container, path5, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create path5 failed'
+
+    yield Obj(f'/{test_container}/{path}', body)
+
+    client.delete_object(test_container, path)
+
+
+@pytest.fixture()
+def tmp_file():
+    client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
+    path = f'{test_dir}/test_file.txt'
+    body = 'In god we trust; all others must bring data.'.encode()
+    resp = client.put_object(test_container, path, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create failed'
+
+    yield Obj(f'/{test_container}/{path}', body)
+    client.delete_object(test_container, path)

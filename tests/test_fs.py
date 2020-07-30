@@ -17,36 +17,26 @@ from os.path import dirname
 
 import pytest
 
+from conftest import test_container, test_dir
 from v3iofs import V3ioFS
 from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
-container = 'bigdata'  # TODO: Configuration
 
+def test_ls(fs: V3ioFS, tmp_obj):
 
-def create_file(client, path):
-    body = datetime.now().isoformat().encode('utf-8')
-    client.put_object(container, path, body=body)
-
-
-def test_ls(fs: V3ioFS):
-    # It would be better to refactor this into conftest.py,
-    # but leveraging the pattern that exists for now.
-    # Also need to modify directory names to end in "/"
-    dir_ = 'v3io-fs-test'
-    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
-    create_file(fs._client, f'{dir_}/a/file.txt')
-    create_file(fs._client, f'{dir_}/a/file2.txt')
-
-    path = f'/{container}/{dir_}/'
+    path = f'/{test_container}/{test_dir}/'
     out0 = fs.ls(path)
     assert len(out0) > 0, 'nothing found'
 
     out1 = fs.ls(path, detail=False)
     assert len(out1) > 0, 'nothing found'
     assert all(isinstance(p, str) for p in out1), 'not string'
+    out1 = [f for f in out1 if not 'iguazio' in f]
     assert set(out1) == set(
-        ['/bigdata/v3io-fs-test/test-file', '/bigdata/v3io-fs-test/a']
+        ['/bigdata/v3io-fs-test/test-file',
+         '/bigdata/v3io-fs-test/a',
+         "/bigdata/v3io-fs-test/b"]
     )
 
     out2 = fs.ls('bigdata/v3io-fs-test/a', detail=False)
@@ -56,7 +46,7 @@ def test_ls(fs: V3ioFS):
          ]
     )
 
-    path = f'/{container}/{dir_}/test-file'
+    path = f'/{test_container}/{test_dir}/test-file'
     out3 = fs.ls(path, detail=True)
     assert len(out3) > 0, 'nothing found'
     assert out3 == [
@@ -73,9 +63,13 @@ def test_ls(fs: V3ioFS):
     ]
 
     out5 = fs.ls('/bigdata/v3io-fs-test', detail=True)
+    out5 = [f for f in out5 if 'iguazio' not in f['name']]
     assert len(out5) > 0, 'nothing found'
     assert out5 == [
         {'name': '/bigdata/v3io-fs-test/a',
+         'size': 0, 'type': 'directory'
+         },
+        {'name': '/bigdata/v3io-fs-test/b',
          'size': 0, 'type': 'directory'
          },
         {'name': '/bigdata/v3io-fs-test/test-file',
@@ -84,18 +78,20 @@ def test_ls(fs: V3ioFS):
     ]
 
 
-def test_glob(fs: V3ioFS):
-    dir_ = 'v3io-fs-test'
-    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
-    create_file(fs._client, f'{dir_}/a/file.txt')
-    create_file(fs._client, f'{dir_}/a/file2.txt')
+def test_glob(fs: V3ioFS, tmp_obj):
     assert fs.glob("bigdata/v3io-fs-test") == ["/bigdata/v3io-fs-test"]
-    assert fs.glob("bigdata/v3io-fs-test/") == [
+    outfiles = fs.glob("bigdata/v3io-fs-test/")
+    outfiles = [f for f in outfiles if not 'iguazio' in f]
+    assert outfiles == [
         "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/b",
         "/bigdata/v3io-fs-test/test-file",
     ]
-    assert fs.glob("bigdata/v3io-fs-test/*") == [
+    outfiles2 = fs.glob("bigdata/v3io-fs-test/*")
+    outfiles2 = [f for f in outfiles if not 'iguazio' in f]
+    assert outfiles2 == [
         "/bigdata/v3io-fs-test/a",
+        "/bigdata/v3io-fs-test/b",
         "/bigdata/v3io-fs-test/test-file",
     ]
 
