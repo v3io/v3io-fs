@@ -14,6 +14,7 @@
 
 from collections import namedtuple
 from datetime import datetime
+from http import HTTPStatus
 from getpass import getuser
 from os import environ
 
@@ -23,7 +24,8 @@ from v3iofs import V3ioFS
 
 host = environ.get('V3IO_API')
 access_key = environ.get('V3IO_ACCESS_KEY')
-container = 'bigdata'  # TODO: configure
+test_container = 'bigdata'
+test_dir = 'v3io-fs-test'
 
 
 Obj = namedtuple('Obj', 'path data')
@@ -41,10 +43,31 @@ def tmp_obj():
     user, ts = getuser(), datetime.now().isoformat()
     client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
 
-    path = f'{user}-test-{ts}'
+    path = f'{test_dir}/{user}-test-{ts}'
     body = f'test data for {user} at {ts}'.encode()
-    client.put_object(container, path, body=body)
+    resp = client.put_object(test_container, path, body=body)
+    assert resp.status_code == HTTPStatus.OK, 'create failed'
 
-    yield Obj(f'/{container}/{path}', body)
+    yield Obj(f'/{test_container}/{path}', body)
 
-    client.delete_object(container, path)
+    client.delete_object(test_container, path)
+
+
+@pytest.fixture(scope="session")
+def new_file():
+    _client, _path = None, ''
+
+    def create_file(client, path):
+        nonlocal _client, _path
+
+        _client, _path = client, path
+        body = datetime.now().isoformat().encode('utf-8')
+        client.put_object(test_container, path, body=body)
+
+    yield create_file
+
+    _client.delete_object(
+        container=test_container,
+        path=_path,
+        raise_for_status=[HTTPStatus.NO_CONTENT],
+    )

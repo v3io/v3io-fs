@@ -1,4 +1,4 @@
-notebooks/
+*notebooks/*
 .envrc
 .pytest_cache
 .vscode

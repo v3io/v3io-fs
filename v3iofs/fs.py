@@ -87,7 +87,7 @@ class V3ioFS(AbstractFileSystem):
             container=container,
             path=path,
             get_all_attributes=True,
-            raise_for_status='never',
+            raise_for_status=[HTTPStatus.OK],
         )
 
         dirs = _resp_dirs(resp, container)
@@ -206,6 +206,15 @@ def container_path(container):
     return f'/{container.name}'
 
 
+def parse_time(creation_date):
+    # '2020-03-26T09:42:57.504000+00:00'
+    # '2020-03-26T09:42:57.71Z'
+    i = creation_date.rfind('+')  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
 def container_info(container):
     return {
         'name': container.name,
@@ -228,9 +237,9 @@ def prefix_info(container_name, prefix):
     return info_of(container_name, prefix, 'prefix')
 
 
-def object_path(container_name, object):
-    # object.key already have a leading /
-    return f'/{container_name}{object.key}'
+def obj_path(container, obj, name_key):
+    path = unslash(getattr(obj, name_key))
+    return f'/{container}/{path}'
 
 
 def object_info(container_name, object):
@@ -255,15 +264,6 @@ def info_of(container_name, obj, name_key):
     if hasattr(obj, 'uid'):
         info['uid'] = int(obj.uid, 16),
     return info
-
-
-def parse_time(creation_date):
-    # '2020-03-26T09:42:57.504000+00:00'
-    # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind('+')  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
-    dt = dt.replace(tzinfo=timezone.utc)
-    return dt.timestamp()
 
 
 def split_auth(url):

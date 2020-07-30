@@ -17,28 +17,19 @@ from os.path import dirname
 
 import pytest
 
+from conftest import test_container, test_dir
 from v3iofs import V3ioFS
 from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
-container = 'bigdata'  # TODO: Configuration
 
-
-def create_file(client, path):
-    body = datetime.now().isoformat().encode('utf-8')
-    client.put_object(container, path, body=body)
-
-
-def test_ls(fs: V3ioFS):
-    # It would be better to refactor this into conftest.py,
-    # but leveraging the pattern that exists for now.
+def test_ls(fs: V3ioFS, new_file):
     # Also need to modify directory names to end in "/"
-    dir_ = 'v3io-fs-test'
-    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
-    create_file(fs._client, f'{dir_}/a/file.txt')
-    create_file(fs._client, f'{dir_}/a/file2.txt')
+    new_file.create_file(fs._client, f'{test_dir}/test-file')
+    new_file.create_file(fs._client, f'{test_dir}/a/file.txt')
+    new_file.create_file(fs._client, f'{test_dir}/a/file2.txt')
 
-    path = f'/{container}/{dir_}/'
+    path = f'/{test_container}/{test_dir}/'
     out0 = fs.ls(path)
     assert len(out0) > 0, 'nothing found'
 
@@ -56,7 +47,7 @@ def test_ls(fs: V3ioFS):
          ]
     )
 
-    path = f'/{container}/{dir_}/test-file'
+    path = f'/{test_container}/{test_dir}/test-file'
     out3 = fs.ls(path, detail=True)
     assert len(out3) > 0, 'nothing found'
     assert out3 == [
@@ -84,11 +75,10 @@ def test_ls(fs: V3ioFS):
     ]
 
 
-def test_glob(fs: V3ioFS):
-    dir_ = 'v3io-fs-test'
-    create_file(fs._client, f'{dir_}/test-file')  # Make sure dir exists
-    create_file(fs._client, f'{dir_}/a/file.txt')
-    create_file(fs._client, f'{dir_}/a/file2.txt')
+def test_glob(fs: V3ioFS, new_file):
+    new_file.create_file(fs._client, f'{test_dir}/test-file')
+    new_file.create_file(fs._client, f'{test_dir}/a/file.txt')
+    new_file.create_file(fs._client, f'{test_dir}/a/file2.txt')
     assert fs.glob("bigdata/v3io-fs-test") == ["/bigdata/v3io-fs-test"]
     assert fs.glob("bigdata/v3io-fs-test/") == [
         "/bigdata/v3io-fs-test/a",
@@ -111,7 +101,7 @@ def test_touch(fs: V3ioFS, tmp_obj):
     path = tmp_obj.path
     fs.touch(path)
     container, path = split_container(path)
-    resp = fs._client.get_object(container, path)
+    resp = fs._client.get_object(test_container, path)
     assert resp.body == b'', 'not truncated'
 
 
