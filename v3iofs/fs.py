@@ -228,9 +228,9 @@ def prefix_info(container_name, prefix):
     return info_of(container_name, prefix, 'prefix')
 
 
-def obj_path(container, obj, name_key):
-    path = unslash(getattr(obj, name_key))
-    return f'/{container}/{path}'
+def object_path(container_name, object):
+    # object.key already have a leading /
+    return f'/{container_name}{object.key}'
 
 
 def object_info(container_name, object):
