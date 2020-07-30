@@ -53,7 +53,7 @@ def tmp_obj():
     client.delete_object(test_container, path)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def new_file():
     _client, _path = None, ''
 
@@ -62,7 +62,7 @@ def new_file():
 
         _client, _path = client, path
         body = datetime.now().isoformat().encode('utf-8')
-        client.put_object(test_container, path, body=body)
+        _client.put_object(test_container, path, body=body)
 
     yield create_file
 

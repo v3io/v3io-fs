@@ -101,7 +101,7 @@ def test_touch(fs: V3ioFS, tmp_obj):
     path = tmp_obj.path
     fs.touch(path)
     container, path = split_container(path)
-    resp = fs._client.get_object(test_container, path)
+    resp = fs._client.get_object(container, path)
     assert resp.body == b'', 'not truncated'
 
 
