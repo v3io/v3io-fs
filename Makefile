@@ -20,3 +20,19 @@ test:
 	find tests -name '*.pyc' -exec rm {} \;
 	flake8 v3iofs tests
 	python -m pytest -rf -v --disable-warnings tests
+
+test-docker:
+	docker build \
+	    -f tests/Dockerfile \
+	    --rm \
+	    --build-arg V3IO_API=$(V3IO_API) \
+	    --build-arg V3IO_ACCESS_KEY=$(V3IO_ACCESS_KEY) \
+	    .
+
+test-docker-fsspec-6:
+	docker build \
+	    -f tests/Dockerfile.fsspec-6 \
+	    --rm \
+	    --build-arg V3IO_API=$(V3IO_API) \
+	    --build-arg V3IO_ACCESS_KEY=$(V3IO_ACCESS_KEY) \
+	    .
