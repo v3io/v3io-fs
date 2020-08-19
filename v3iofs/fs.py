@@ -22,7 +22,7 @@ from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
 
 from .file import V3ioFile
-from .path import split_container, unslash
+from .path import split_container, unslash, path_equal
 
 _file_key = 'key'
 _dir_key = 'prefix'
@@ -92,7 +92,7 @@ class V3ioFS(AbstractFileSystem):
 
         full_path = f'/{container}/{path}'
         contents = getattr(resp.output, 'contents', [])
-        objs = [obj for obj in contents if obj.key == path]
+        objs = [obj for obj in contents if path_equal(obj.key, path)]
         if not objs:
             raise FileNotFoundError(full_path)
 
@@ -150,7 +150,7 @@ class V3ioFS(AbstractFileSystem):
         """
 
         out = self.ls(path, detail=True, **kw)
-        entries = [o for o in out if unslash(o['name']) == unslash(path)]
+        entries = [o for o in out if path_equal(o['name'], path)]
 
         if len(entries) == 1:
             entry = entries[0]
@@ -222,7 +222,7 @@ def obj_path(container, obj, name_key):
 def info_of(container_name, obj, name_key):
     info = {
         'name': obj_path(container_name, obj, name_key),
-        'type': 'directory' if hasattr(obj, 'size') else 'file',
+        'type': 'file' if hasattr(obj, 'size') else 'directory',
         'size': getattr(obj, 'size', 0),
         'mtime': parse_time(obj.last_modified),
     }
@@ -282,7 +282,7 @@ def _has_data(resp):
     return hasattr(out, 'common_prefixes') or hasattr(out, 'contents')
 
 
-def _new_client(v3io_api=None, v3io_access_key=None):
+def _new_client(v3io_api=None, v3io_access_key=None) -> Client:
     v3io_api = v3io_api or environ.get('V3IO_API')
     v3io_access_key = \
         v3io_access_key or environ.get('V3IO_ACCESS_KEY')

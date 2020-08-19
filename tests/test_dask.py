@@ -34,7 +34,12 @@ Morty,Twix,1.7,5
 tests_root = Path(__file__).absolute().parent
 test_pq = tests_root / 'sanchez.pq'
 with test_pq.open('rb') as fp:
-    pq_data = fp.read()
+    parquet_data = fp.read()
+
+data_by_type = {
+    'csv': csv_data,
+    'pq': parquet_data,
+}
 
 
 def test_text(tmp_obj):
@@ -46,18 +51,20 @@ def test_text(tmp_obj):
 
 
 read_cases = [
-    # read_fn, data
-    (dd.read_csv, csv_data),
-    (dd.read_parquet, pq_data),
+    # read_fn, typ
+    (dd.read_csv, 'csv'),
+    (dd.read_parquet, 'pq'),
 ]
 
 
-@pytest.mark.parametrize('read_fn, data', read_cases)
-def test_read_csv(read_fn, data, client, new_file):
-    file_name = datetime.now().strftime('test-%Y%m%d%H%M.csv')
-    file_path = f'/{test_container}/{test_dir}/{file_name}'
+@pytest.mark.parametrize('read_fn, typ', read_cases)
+def test_read(read_fn, typ, client, new_file):
+    assert typ in data_by_type, f'unknown type: {typ!r}'
+    data = data_by_type[typ]
+    file_name = datetime.now().strftime('test-%Y%m%d%H%M.') + typ
+    file_path = f'/{test_dir}/{file_name}'
     new_file(client, file_path, data)
 
-    df = read_fn(f'v3io://{file_path}')
+    df = read_fn(f'v3io://{test_container}{file_path}')
     assert 4 == len(df.columns), '# of columns'
     assert 5 == len(df), '# of rows'

@@ -61,10 +61,12 @@ def new_file():
 
         _client, _path = client, path
         body = body or datetime.now().isoformat().encode('utf-8')
-        client.put_object(test_container, path, body=body)
+        out = client.put_object(test_container, path, body=body)
+        out.raise_for_status()
 
     yield create_file
 
+    return
     _client.delete_object(
         container=test_container,
         path=_path,
@@ -76,6 +78,6 @@ def new_file():
 def client():
     client = _new_client()
     try:
-        client
+        yield client
     finally:
         client.close()
