@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 
 
 def split_container(path):
@@ -39,3 +40,13 @@ def unslash(s):
     if not s or s[-1] != '/':
         return s
     return s[:-1]
+
+
+def _norm(p):
+    p = re.sub('/+', '/', p)
+    return '/' + p if p[0] != '/' else p
+
+
+def path_equal(p1, p2):
+    """Check that two paths are equal"""
+    return _norm(p1) == _norm(p2)
