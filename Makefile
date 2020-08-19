@@ -19,7 +19,11 @@ test:
 	find v3iofs -name '*.pyc' -exec rm {} \;
 	find tests -name '*.pyc' -exec rm {} \;
 	flake8 v3iofs tests
-	python -m pytest -rf -v --disable-warnings tests
+	python -m pytest \
+	    -rf -v \
+	    --disable-warnings \
+	    --doctest-modules \
+	    tests v3iofs
 
 test-docker:
 	docker build \

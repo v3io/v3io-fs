@@ -18,7 +18,7 @@ def split_container(path):
     """Split path container & path
 
     >>> split_container('/bigdata/path/to/file')
-    ('bigdata', 'path/to/file')
+    ['bigdata', 'path/to/file']
     """
     if not path:
         raise ValueError('empty path')

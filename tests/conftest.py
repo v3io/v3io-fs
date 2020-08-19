@@ -66,7 +66,6 @@ def new_file():
 
     yield create_file
 
-    return
     _client.delete_object(
         container=test_container,
         path=_path,
