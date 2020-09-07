@@ -13,9 +13,31 @@
 # limitations under the License.
 
 
+from pathlib import Path
+
 import dask.bag as db
 
 from conftest import access_key
+
+csv_data = b'''
+name,item,price,quantity
+Rick,Vodka,13.2,22
+Jerry,Beer,34.2,300
+Beth,Lettuce,1.2,13
+Summer,M&M,2.2,7
+Morty,Twix,1.7,5
+'''
+
+
+tests_root = Path(__file__).absolute().parent
+test_pq = tests_root / 'sanchez.pq'
+with test_pq.open('rb') as fp:
+    parquet_data = fp.read()
+
+data_by_type = {
+    'csv': csv_data,
+    'pq': parquet_data,
+}
 
 data = 'In god we trust; all others must bring data.'
 
