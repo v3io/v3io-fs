@@ -112,10 +112,8 @@ class V3ioFS(AbstractFileSystem):
         if not pathlist:
             raise FileNotFoundError(f'{full_path!r} not found')
 
-        pathlist_ = self._details(pathlist)
-
         if detail:
-            return pathlist_
+            return self._details(pathlist)
 
         return [path['name'] for path in pathlist]
 
