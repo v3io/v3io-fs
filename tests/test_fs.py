@@ -32,7 +32,7 @@ def test_ls(fs: V3ioFS, tmp_obj):
     out1 = fs.ls(path, detail=False)
     assert len(out1) > 0, 'nothing found'
     assert all(isinstance(p, str) for p in out1), 'not string'
-    out1 = [f for f in out1 if not 'iguazio' in f]
+    out1 = [f for f in out1 if 'iguazio' not in f]
     assert set(out1) == set(
         ['/bigdata/v3io-fs-test/test-file',
          '/bigdata/v3io-fs-test/a',
@@ -81,14 +81,14 @@ def test_ls(fs: V3ioFS, tmp_obj):
 def test_glob(fs: V3ioFS, tmp_obj):
     assert fs.glob("bigdata/v3io-fs-test") == ["/bigdata/v3io-fs-test"]
     outfiles = fs.glob("bigdata/v3io-fs-test/")
-    outfiles = [f for f in outfiles if not 'iguazio' in f]
+    outfiles = [f for f in outfiles if 'iguazio' not in f]
     assert outfiles == [
         "/bigdata/v3io-fs-test/a",
         "/bigdata/v3io-fs-test/b",
         "/bigdata/v3io-fs-test/test-file",
     ]
     outfiles2 = fs.glob("bigdata/v3io-fs-test/*")
-    outfiles2 = [f for f in outfiles if not 'iguazio' in f]
+    outfiles2 = [f for f in outfiles if 'iguazio' not in f]
     assert outfiles2 == [
         "/bigdata/v3io-fs-test/a",
         "/bigdata/v3io-fs-test/b",

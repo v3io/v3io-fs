@@ -24,7 +24,7 @@ from v3iofs import V3ioFS
 
 host = environ.get('V3IO_API')
 access_key = environ.get('V3IO_ACCESS_KEY')
-test_container = 'bigdata'
+test_container = 'bigdata'  # TODO: configure
 test_dir = 'v3io-fs-test'
 
 
@@ -38,7 +38,7 @@ def fs():
     fs._client.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def tmp_obj():
     user, ts = getuser(), datetime.now().isoformat()
     client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client

@@ -23,7 +23,7 @@ def version():
 
 
 def load_deps(file_name):
-    '''Load dependencies from requirements file'''
+    """Load dependencies from requirements file"""
     deps = []
     with open(file_name) as fp:
         for line in fp:
