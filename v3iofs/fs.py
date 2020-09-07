@@ -23,7 +23,7 @@ from fsspec.utils import stringify_path
 from v3io.dataplane import Client
 
 from .file import V3ioFile
-from .path import split_container, unslash, path_equal
+from .path import split_container, unslash
 
 
 class V3ioFS(AbstractFileSystem):
@@ -44,7 +44,15 @@ class V3ioFS(AbstractFileSystem):
     def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._client = _new_client(v3io_api, v3io_access_key)
+        self._v3io_api = v3io_api or environ.get('V3IO_API')
+        self._v3io_access_key = \
+            v3io_access_key or environ.get('V3IO_ACCESS_KEY')
+
+        self._client = Client(
+            endpoint=self._v3io_api,
+            access_key=self._v3io_access_key,
+            transport_kind='requests',
+        )
 
     @classmethod
     def _strip_protocol(cls, path):

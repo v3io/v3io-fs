@@ -13,13 +13,11 @@
 # limitations under the License.
 
 
-from datetime import datetime
 from pathlib import Path
 
 import dask.bag as db
-import dask.dataframe as dd
-import pytest
-from conftest import test_container, test_dir
+
+from conftest import access_key
 
 csv_data = b'''
 name,item,price,quantity
@@ -40,6 +38,9 @@ data_by_type = {
     'csv': csv_data,
     'pq': parquet_data,
 }
+
+data = 'In god we trust; all others must bring data.'
+
 
 def test_dask(tmp_file):
     uri = f'v3io://{tmp_file.path}'
