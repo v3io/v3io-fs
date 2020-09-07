@@ -16,11 +16,8 @@ from collections import namedtuple
 from datetime import datetime
 from http import HTTPStatus
 from getpass import getuser
-from os import environ
 
 import pytest
-
-from v3iofs import V3ioFS
 
 host = environ.get('V3IO_API')
 access_key = environ.get('V3IO_ACCESS_KEY')
@@ -33,7 +30,7 @@ Obj = namedtuple('Obj', 'path data')
 
 @pytest.fixture
 def fs():
-    fs = V3ioFS(v3io_api=host, v3io_access_key=access_key)
+    fs = V3ioFS()
     yield fs
     fs._client.close()
 
@@ -41,7 +38,7 @@ def fs():
 @pytest.fixture(scope="function")
 def tmp_obj():
     user, ts = getuser(), datetime.now().isoformat()
-    client = V3ioFS(v3io_api=host, v3io_access_key=access_key)._client
+    client = _new_client()
 
     path = f'{test_dir}/{user}-test-{ts}'
     body = f'test data for {user} at {ts}'.encode()
