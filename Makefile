@@ -46,7 +46,7 @@ publish:
 	test -z "$(shell git status -su)"
 	@echo "Checking for VERSION in environment (make publish VERSION=1.2.3)"
 	test -n "$(VERSION)"
-	sed -i "s/__version__ = '0.1.0'/__version = '$(VERSION)'/" \
+	sed -i "s/__version__ = '.*'/__version = '$(VERSION)'/" \
 	    v3iofs/__init__.py
 	rm -fr dist build
 	python setup.py sdist
