@@ -48,7 +48,7 @@ publish:
 	test -n "$(VERSION)"
 	sed -i "s/__version__ = '0.1.0'/__version = '$(VERSION)'/" \
 	    v3iofs/__init__.py
-	rm -f dist build
+	rm -fr dist build
 	python setup.py sdist
 	python -m twine upload dist/*.tar.gz
 	git tag version-$(VERSION)
