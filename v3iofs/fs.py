@@ -168,6 +168,7 @@ class V3ioFS(AbstractFileSystem):
         mode='rb',
         block_size=None,
         autocommit=True,
+        cache_type='readahead',
         cache_options=None,
         **kw,
     ):
@@ -177,6 +178,7 @@ class V3ioFS(AbstractFileSystem):
             mode=mode,
             block_size=block_size,
             autocommit=autocommit,
+            cache_type=cache_type,
             cache_options=cache_options,
             **kw,
         )
