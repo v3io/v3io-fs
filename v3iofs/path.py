@@ -20,6 +20,7 @@ def split_container(path):
     >>> split_container('/bigdata/path/to/file')
     ['bigdata', 'path/to/file']
     """
+    path = str(path)  # Might be pathlib.Path
     if not path:
         raise ValueError('empty path')
 

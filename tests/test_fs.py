@@ -14,6 +14,7 @@
 
 from datetime import datetime, timezone
 from os.path import basename, dirname
+from pathlib import Path
 
 import pytest
 from conftest import test_container, test_dir
@@ -22,10 +23,16 @@ from v3iofs import V3ioFS
 from v3iofs.fs import parse_time
 from v3iofs.path import split_container
 
+path_types = [
+    str,
+    Path,
+]
 
-def test_ls(fs: V3ioFS, new_file):
+
+@pytest.mark.parametrize('path_cls', path_types)
+def test_ls(fs: V3ioFS, new_file, path_cls):
     new_file(fs._client, f'{test_dir}/test-file')  # Make sure dir exists
-    path = f'/{test_container}/{test_dir}/'
+    path = path_cls(f'/{test_container}/{test_dir}/')
     out = fs.ls(path)
     assert len(out) > 0, 'nothing found'
     assert all(isinstance(p, dict) for p in out), 'not dict'
