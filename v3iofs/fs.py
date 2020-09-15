@@ -51,7 +51,6 @@ class V3ioFS(AbstractFileSystem):
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
         full_path = path
-        path = str(path)
         container, path = split_container(path)
         if not container:
             return self._list_containers(detail)
