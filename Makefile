@@ -40,3 +40,12 @@ test-docker-fsspec-6:
 	    --build-arg V3IO_API=$(V3IO_API) \
 	    --build-arg V3IO_ACCESS_KEY=$(V3IO_ACCESS_KEY) \
 	    .
+
+publish:
+	test -n "$(VERSION)"
+	sed -i "s/__version__ = '0.1.0'/__version = '$(VERSION)'/" \
+	    v3iofs/__init__.py
+	rm -f dist build
+	python setup.py sdist
+	python -m twine upload dist/*.tar.gz
+	git tag version-$(VERSION)
