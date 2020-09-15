@@ -53,3 +53,4 @@ publish:
 	python setup.py sdist
 	python -m twine upload dist/*.tar.gz
 	git tag version-$(VERSION)
+	git push && git push --tags
