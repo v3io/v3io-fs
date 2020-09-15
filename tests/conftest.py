@@ -80,3 +80,42 @@ def client():
         yield client
     finally:
         client.close()
+
+
+tree_data = {
+    'file1': b'file 1 data',
+    'a': {
+        'file1': b'file 1 data - a',
+        'file2': b'file 2 data',
+    },
+    'b': {
+        'file1': b'file 1 data - b',
+    },
+}
+tree_root = f'/{test_container}/{test_dir}/tree'
+Tree = namedtuple('Tree', 'root data')
+
+
+@pytest.fixture(scope='session')
+def tree():
+    fs = V3ioFS()
+    create_tree(fs, tree_root, tree_data)
+
+    yield Tree(tree_root, tree_data)
+
+    fs.rm(tree_root, recursive=True)
+    fs._client.close()
+
+
+def create_tree(fs, prefix, tree):
+    fs.mkdir(prefix)
+    for name, value in tree.items():
+        path = f'{prefix}/{name}'
+        if isinstance(value, bytes):
+            with fs.open(path, 'wb') as out:
+                out.write(value)
+        elif isinstance(value, dict):
+            fs.mkdir(path)
+            create_tree(fs, path, value)
+        else:
+            raise TypeError(f'unknown value type: {type(value)!r}')

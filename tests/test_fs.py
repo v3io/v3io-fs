@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from datetime import datetime, timezone
-from os.path import dirname
+from os.path import basename, dirname
 
 import pytest
-
 from conftest import test_container, test_dir
+
 from v3iofs import V3ioFS
 from v3iofs.fs import parse_time
 from v3iofs.path import split_container
@@ -69,3 +69,22 @@ def test_parse_time(value, expected, raises):
 
     out = parse_time(value)
     assert expected == out
+
+
+def load_tree(fs, root):
+    out = {}
+    for entry in fs.ls(root, detail=True):
+        name = basename(entry['name'])
+        if entry['type'] == 'file':
+            with fs.open(entry['name'], 'rb') as fp:
+                out[name] = fp.read()
+        elif entry['type'] == 'directory':
+            out[name] = load_tree(fs, f'{root}/{name}')
+        else:
+            raise TypeError(f'unknown entry type: {entry["type"]}')
+    return out
+
+
+def test_directory(fs, tree):
+    out = load_tree(fs, tree.root)
+    assert tree.data == out
