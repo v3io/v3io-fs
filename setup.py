@@ -28,7 +28,7 @@ def load_deps(file_name):
     with open(file_name) as fp:
         for line in fp:
             line = line.strip()
-            if not line or line[0] == '#':
+            if not line or line[0] == '#' or line.startswith('-r'):
                 continue
             deps.append(line)
     return deps
