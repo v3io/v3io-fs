@@ -20,7 +20,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r dev-requirements.txt
     - name: test
-      env: # Or as an environment variable
+      env:
         V3IO_API: ${{ secrets.V3IO_API }}
         V3IO_ACCESS_KEY: ${{ secrets.V3IO_ACCESS_KEY }}
       run: make test
