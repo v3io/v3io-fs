@@ -7,17 +7,25 @@
 An [fsspec][fsspec] driver for [v3io][v3io].
 
 
-**⚠ THIS IS ALPHA QUALITY WORK IN PROGRESS - DO NOT USE!**
+## Examples
 
-## Example
+
+### Python
 
 ```python
->>> from v3iofs import V3ioFS
+>>> from v3iofs import V3ioFS  # Will register 'v3io' protocol in ffspec
 >>> fs = V3ioFS('api.app.yh48.iguazio-cd2.com', v3io_access_key='s3cr3t')
 >>> fs.ls('/container/path')
 ```
 
-## Dask Example
+### Pandas
+
+```python
+# Use V3IO_ACCESS_KEY & V3IO_API from environment
+>> df = pd.read_csv('/container/path/to/file.csv')
+```
+
+### Dask
 
 ```python
 >>> from v3iofs import V3ioFS
@@ -53,7 +61,7 @@ are in `dev-requirements.txt`.
 
 ```
 $ python -m venv venv
-$ ./venv/bin/python -m pip install -r requirements.txt -r dev-requirements.txt
+$ ./venv/bin/python -m pip install -r dev-requirements.txt
 ```
 
 
