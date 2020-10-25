@@ -24,7 +24,7 @@ An [fsspec][fsspec] driver for [v3io][v3io].
 
 ```python
 # Use V3IO_ACCESS_KEY & V3IO_API from environment
->> df = pd.read_csv('/container/path/to/file.csv')
+>> df = pd.read_csv('v3io://container/path/to/file.csv')
 ```
 
 ### Dask
