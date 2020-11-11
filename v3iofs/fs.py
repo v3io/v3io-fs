@@ -292,5 +292,4 @@ def _new_client(v3io_api=None, v3io_access_key=None) -> Client:
     return Client(
         endpoint=v3io_api,
         access_key=v3io_access_key,
-        transport_kind='requests',
     )
