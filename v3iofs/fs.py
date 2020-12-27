@@ -65,7 +65,7 @@ class V3ioFS(AbstractFileSystem):
         )
 
         # Ignore 404's here
-        if resp.status_code not in [200, 404]:
+        if resp.status_code not in {200, 404}:
             raise Exception(f'{resp.status_code} received while accessing {path!r}')
 
         # If not data, try to find file in parent directory
@@ -125,7 +125,7 @@ class V3ioFS(AbstractFileSystem):
         )
 
         # Ignore 404's and 409's in delete
-        if resp.status_code not in [200, 404, 409]:
+        if resp.status_code not in {200, 404, 409}:
             raise Exception(f'{resp.status_code} received while accessing {path!r}')
 
     def touch(self, path, truncate=True, **kwargs):
