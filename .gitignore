@@ -4,3 +4,4 @@
 .vscode
 dist
 v3iofs.egg-info/
+.idea/
