@@ -64,7 +64,10 @@ class V3ioFS(AbstractFileSystem):
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
 
-        handle_v3io_errors(resp, path)
+        # Ignore 404's here
+        if resp.status_code not in [200, 404]:
+            raise Exception(f'{resp.status_code} received while accessing {path!r}')
+
         # If not data, try to find file in parent directory
         if not _has_data(resp):
             return [self._ls_file(container, path, detail)]
@@ -121,6 +124,7 @@ class V3ioFS(AbstractFileSystem):
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
 
+        # Ignore 404's and 409's in delete
         if resp.status_code not in [200, 404, 409]:
             raise Exception(f'{resp.status_code} received while accessing {path!r}')
 
