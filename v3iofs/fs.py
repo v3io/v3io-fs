@@ -106,7 +106,7 @@ class V3ioFS(AbstractFileSystem):
 
     def _list_containers(self, detail):
         resp = self._client.get_containers(raise_for_status=v3io.dataplane.RaiseForStatus.never)
-        handle_v3io_errors(resp, '')
+        handle_v3io_errors(resp, 'containers')
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
@@ -125,7 +125,7 @@ class V3ioFS(AbstractFileSystem):
         )
 
         # Ignore 404's and 409's in delete
-        if resp.status_code not in {200, 404, 409}:
+        if resp.status_code not in {200, 204, 404, 409}:
             raise Exception(f'{resp.status_code} received while accessing {path!r}')
 
     def touch(self, path, truncate=True, **kwargs):
