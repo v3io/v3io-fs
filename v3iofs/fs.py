@@ -20,9 +20,11 @@ from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
+import v3io
 
 from .file import V3ioFile
 from .path import split_container, unslash, path_equal
+from .utils import handle_v3io_errors
 
 _file_key = 'key'
 _dir_key = 'prefix'
@@ -55,19 +57,19 @@ class V3ioFS(AbstractFileSystem):
         if not container:
             return self._list_containers(detail)
 
-        err = False
-        try:
-            resp = self._client.get_container_contents(
-                container=container,
-                path=path,
-                get_all_attributes=True,
-                raise_for_status=[HTTPStatus.OK],
-            )
-        except RuntimeError:
-            err = True
+        resp = self._client.get_container_contents(
+            container=container,
+            path=path,
+            get_all_attributes=True,
+            raise_for_status=v3io.dataplane.RaiseForStatus.never,
+        )
+
+        # Ignore 404's here
+        if resp.status_code not in {200, 404}:
+            raise Exception(f'{resp.status_code} received while accessing {path!r}')
 
         # If not data, try to find file in parent directory
-        if err or not _has_data(resp):
+        if not _has_data(resp):
             return [self._ls_file(container, path, detail)]
 
         out = (
@@ -87,10 +89,11 @@ class V3ioFS(AbstractFileSystem):
             container=container,
             path=dirname,
             get_all_attributes=True,
-            raise_for_status=[HTTPStatus.OK],
+            raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
 
         full_path = f'/{container}/{path}'
+        handle_v3io_errors(resp, full_path)
         contents = getattr(resp.output, 'contents', [])
         objs = [obj for obj in contents if path_equal(obj.key, path)]
         if not objs:
@@ -102,7 +105,8 @@ class V3ioFS(AbstractFileSystem):
         return info_of(container, obj, _file_key)
 
     def _list_containers(self, detail):
-        resp = self._client.get_containers(raise_for_status=[HTTPStatus.OK])
+        resp = self._client.get_containers(raise_for_status=v3io.dataplane.RaiseForStatus.never)
+        handle_v3io_errors(resp, 'containers')
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
@@ -114,20 +118,26 @@ class V3ioFS(AbstractFileSystem):
         if not container:
             raise ValueError(f'bad path: {path:r}')
 
-        self._client.delete_object(
+        resp = self._client.delete_object(
             container=container,
             path=path,
-            raise_for_status=[HTTPStatus.NO_CONTENT],
+            raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
+
+        # Ignore 404's and 409's in delete
+        if resp.status_code not in {200, 204, 404, 409}:
+            raise Exception(f'{resp.status_code} received while accessing {path!r}')
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
             raise ValueError('only truncate touch supported')
 
         container, path = split_container(path)
-        self._client.put_object(
-            container, path, raise_for_status=[HTTPStatus.OK]
+        resp = self._client.put_object(
+            container, path, raise_for_status=v3io.dataplane.RaiseForStatus.never
         )
+
+        handle_v3io_errors(resp, path)
 
     def info(self, path, **kw):
         """Details of entry at path

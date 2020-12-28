@@ -16,7 +16,8 @@ from http import HTTPStatus
 
 from fsspec.spec import AbstractBufferedFile
 from v3io.dataplane import Client
-
+from .utils import handle_v3io_errors
+import v3io
 from .path import split_container
 
 
@@ -28,9 +29,9 @@ class V3ioFile(AbstractBufferedFile):
 
         resp = client.get_object(
             container, path, offset=start, num_bytes=nbytes,
-            raise_for_status=[HTTPStatus.PARTIAL_CONTENT, HTTPStatus.OK])
+            raise_for_status=v3io.dataplane.RaiseForStatus.never)
 
-        return resp.body
+        return handle_v3io_errors(resp, path)
 
     def _upload_chunk(self, final=False):
         """ Write one part of a multi-block file upload
@@ -47,10 +48,11 @@ class V3ioFile(AbstractBufferedFile):
 
         client: Client = self.fs._client
         container, path = split_container(self.path)
-        client.put_object(
+        resp = client.put_object(
             container, path, body=body, append=True,
-            raise_for_status=[HTTPStatus.OK],
+            raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
 
-        # No need to clear self.buffer, fsspec does that
-        return True
+        if handle_v3io_errors(resp, path):
+            # No need to clear self.buffer, fsspec does that
+            return True

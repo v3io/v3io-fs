@@ -19,6 +19,7 @@ from getpass import getuser
 
 import pytest
 
+import v3io.dataplane
 from v3iofs import V3ioFS
 from v3iofs.fs import _new_client
 
@@ -69,7 +70,7 @@ def new_file():
     _client.delete_object(
         container=test_container,
         path=_path,
-        raise_for_status=[HTTPStatus.NO_CONTENT],
+        raise_for_status=v3io.dataplane.RaiseForStatus.never,
     )
 
 
