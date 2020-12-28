@@ -14,7 +14,6 @@
 
 
 from datetime import datetime, timezone
-from http import HTTPStatus
 from os import environ
 from urllib.parse import urlparse
 
@@ -66,15 +65,16 @@ class V3ioFS(AbstractFileSystem):
 
         # Ignore 404's here
         if resp.status_code not in {200, 404}:
-            raise Exception(f'{resp.status_code} received while accessing {path!r}')
+            raise Exception(
+                f'{resp.status_code} received while accessing {path!r}')
 
         # If not data, try to find file in parent directory
         if not _has_data(resp):
             return [self._ls_file(container, path, detail)]
 
         out = (
-            _resp_dirs(resp, container, detail) +
-            _resp_files(resp, container, detail)
+                _resp_dirs(resp, container, detail) +
+                _resp_files(resp, container, detail)
         )
 
         if not out:
@@ -105,7 +105,8 @@ class V3ioFS(AbstractFileSystem):
         return info_of(container, obj, _file_key)
 
     def _list_containers(self, detail):
-        resp = self._client.get_containers(raise_for_status=v3io.dataplane.RaiseForStatus.never)
+        resp = self._client.get_containers(
+            raise_for_status=v3io.dataplane.RaiseForStatus.never)
         handle_v3io_errors(resp, 'containers')
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
@@ -126,7 +127,8 @@ class V3ioFS(AbstractFileSystem):
 
         # Ignore 404's and 409's in delete
         if resp.status_code not in {200, 204, 404, 409}:
-            raise Exception(f'{resp.status_code} received while accessing {path!r}')
+            raise Exception(
+                f'{resp.status_code} received while accessing {path!r}')
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
@@ -134,7 +136,8 @@ class V3ioFS(AbstractFileSystem):
 
         container, path = split_container(path)
         resp = self._client.put_object(
-            container, path, raise_for_status=v3io.dataplane.RaiseForStatus.never
+            container, path,
+            raise_for_status=v3io.dataplane.RaiseForStatus.never
         )
 
         handle_v3io_errors(resp, path)
@@ -173,14 +176,14 @@ class V3ioFS(AbstractFileSystem):
         raise FileNotFoundError(path)
 
     def _open(
-        self,
-        path,
-        mode='rb',
-        block_size=None,
-        autocommit=True,
-        cache_type='readahead',
-        cache_options=None,
-        **kw,
+            self,
+            path,
+            mode='rb',
+            block_size=None,
+            autocommit=True,
+            cache_type='readahead',
+            cache_options=None,
+            **kw,
     ):
         return V3ioFile(
             fs=self,
