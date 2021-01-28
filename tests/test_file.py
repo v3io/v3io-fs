@@ -43,5 +43,5 @@ def test_initiate_upload(fs: V3ioFS, tmp_obj):
     v3f = V3ioFile(fs, tmp_obj.path, 'wb')
     v3f._initiate_upload()
     assert not fs.exists(tmp_obj.path)
-    # make sure run smoothly even if the file does not exist
+    # should not fail even if the file does not exist
     v3f._initiate_upload()
