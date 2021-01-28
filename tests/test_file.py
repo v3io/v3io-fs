@@ -35,3 +35,13 @@ def test_upload_chunk(fs: V3ioFS, tmp_obj):
         data = fp.read()
 
     assert expected == data, 'bad data'
+
+
+def test_initiate_upload(fs: V3ioFS, tmp_obj):
+    fs.touch(tmp_obj.path)
+    assert fs.exists(tmp_obj.path)
+    v3f = V3ioFile(fs, tmp_obj.path, 'wb')
+    v3f._initiate_upload()
+    assert not fs.exists(tmp_obj.path)
+    # make sure run smoothly even if the file does not exist
+    v3f._initiate_upload()

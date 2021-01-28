@@ -55,3 +55,9 @@ class V3ioFile(AbstractBufferedFile):
         if handle_v3io_errors(resp, path):
             # No need to clear self.buffer, fsspec does that
             return True
+
+    def _initiate_upload(self):
+        """ Create remote file/upload """
+        client: Client = self.fs._client
+        container, path = split_container(self.path)
+        client.object.delete(container=container, path=path)
