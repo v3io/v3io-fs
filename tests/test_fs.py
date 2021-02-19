@@ -101,7 +101,8 @@ def test_directory(fs, tree):
 def test_fsspec():
     fs = fsspec.filesystem("v3io")
     dirpath = f'/{test_container}/{test_dir}/fss'
-    filepath = dirpath + '/tst.txt'
+    file_name = datetime.now().strftime('test_%f')
+    filepath = f'{dirpath}/{file_name}.txt'
     with fs.open(filepath, 'wb') as fp:
         fp.write(b'123')
     for prefix in ['', 'v3io://']:
@@ -115,4 +116,5 @@ def test_fsspec():
     with fs.open(prefix + filepath) as fp:
         data = fp.read()
     assert data == b'123', 'unexpected data'
-    fs.rm(dirpath, recursive=True)
+    print(filepath)
+    fs.rm(filepath)
