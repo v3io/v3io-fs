@@ -22,7 +22,7 @@ from v3io.dataplane import Client
 import v3io
 
 from .file import V3ioFile
-from .path import split_container, unslash, path_equal
+from .path import split_container, unslash, path_equal, strip_schema
 from .utils import handle_v3io_errors
 
 _file_key = 'key'
@@ -52,6 +52,7 @@ class V3ioFS(AbstractFileSystem):
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
         full_path = path
+        path = strip_schema(path)
         container, path = split_container(path)
         if not container:
             return self._list_containers(detail)
@@ -134,6 +135,7 @@ class V3ioFS(AbstractFileSystem):
         if not truncate:  # TODO
             raise ValueError('only truncate touch supported')
 
+        path = strip_schema(path)
         container, path = split_container(path)
         resp = self._client.put_object(
             container, path,
@@ -141,39 +143,6 @@ class V3ioFS(AbstractFileSystem):
         )
 
         handle_v3io_errors(resp, path)
-
-    def info(self, path, **kw):
-        """Details of entry at path
-
-        Returns a single dictionary, with exactly the same information as
-        ``ls`` would with ``detail=True``.
-
-        Parameters
-        ----------
-        path: str
-            Path to get info for
-        **kw:
-            Keyword arguments passed to `ls`
-
-        Returns
-        -------
-        dict
-            keys: name (full path in the FS), size (in bytes), type (file,
-            directory, or something else) and other FS-specific keys.
-        """
-
-        out = self.ls(path, detail=True, **kw)
-        entries = [o for o in out if path_equal(o['name'], path)]
-
-        if len(entries) == 1:
-            entry = entries[0]
-            entry.setdefault('size', None)
-            return entry
-
-        if len(entries) >= 1 or out:
-            return {'name': path, 'size': 0, 'type': 'directory'}
-
-        raise FileNotFoundError(path)
 
     def _open(
             self,

@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from urllib.parse import urlparse
+
+
+def strip_schema(url):
+    if not url or '://' not in url:
+        return url
+    parsed_url = urlparse(url)
+    return parsed_url.path
 
 
 def split_container(path):
@@ -23,7 +31,6 @@ def split_container(path):
     path = str(path)  # Might be pathlib.Path
     if not path:
         raise ValueError('empty path')
-
     if path == '/':
         return '', ''
 
