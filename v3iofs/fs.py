@@ -144,6 +144,40 @@ class V3ioFS(AbstractFileSystem):
 
         handle_v3io_errors(resp, path)
 
+    def info(self, path, **kw):
+        """Details of entry at path
+
+        Returns a single dictionary, with exactly the same information as
+        ``ls`` would with ``detail=True``.
+
+        Parameters
+        ----------
+        path: str
+            Path to get info for
+        **kw:
+            Keyword arguments passed to `ls`
+
+        Returns
+        -------
+        dict
+            keys: name (full path in the FS), size (in bytes), type (file,
+            directory, or something else) and other FS-specific keys.
+        """
+
+        path = strip_schema(path)
+        out = self.ls(path, detail=True, **kw)
+        entries = [o for o in out if path_equal(o['name'], path)]
+
+        if len(entries) == 1:
+            entry = entries[0]
+            entry.setdefault('size', None)
+            return entry
+
+        if len(entries) >= 1 or out:
+            return {'name': path, 'size': 0, 'type': 'directory'}
+
+        raise FileNotFoundError(path)
+
     def _open(
             self,
             path,

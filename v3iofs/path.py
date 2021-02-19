@@ -16,10 +16,12 @@ from urllib.parse import urlparse
 
 
 def strip_schema(url):
-    if not url or '://' not in url:
+    if not url:
         return url
-    parsed_url = urlparse(url)
-    return parsed_url.path
+    url = str(url)
+    if '://' in url:
+        url = urlparse(url).path
+    return url.replace('\\', '/')  # fix in windows
 
 
 def split_container(path):
