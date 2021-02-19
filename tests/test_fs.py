@@ -110,7 +110,8 @@ def test_fsspec():
             f'unexpected number of files {len(files)} in {prefix + dirpath}'
         assert fs.info(prefix + filepath)['type'] == 'file', \
             f'unexpected type in {prefix + dirpath}'
-        assert fs.size(prefix + filepath) == 3, f"unexpected file size in {prefix + dirpath}"
+        assert fs.size(prefix + filepath) == 3, \
+            f"unexpected file size in {prefix + dirpath}"
     with fs.open(prefix + filepath) as fp:
         data = fp.read()
     assert data == b'123', 'unexpected data'
