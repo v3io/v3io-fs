@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from os.path import basename, dirname
 from pathlib import Path
 
+import fsspec
 import pytest
 from conftest import test_container, test_dir
 
@@ -95,3 +96,25 @@ def load_tree(fs, root):
 def test_directory(fs, tree):
     out = load_tree(fs, tree.root)
     assert tree.data == out
+
+
+def test_fsspec():
+    fs = fsspec.filesystem("v3io")
+    dirpath = f'/{test_container}/{test_dir}/fss'
+    file_name = datetime.now().strftime('test_%f')
+    filepath = f'{dirpath}/{file_name}.txt'
+    with fs.open(filepath, 'wb') as fp:
+        fp.write(b'123')
+    for prefix in ['', 'v3io://']:
+        files = fs.ls(prefix + dirpath, detail=True)
+        assert len(files) == 1, \
+            f'unexpected number of files {len(files)} in {prefix + dirpath}'
+        assert fs.info(prefix + filepath)['type'] == 'file', \
+            f'unexpected type in {prefix + dirpath}'
+        assert fs.size(prefix + filepath) == 3, \
+            f"unexpected file size in {prefix + dirpath}"
+    with fs.open(prefix + filepath) as fp:
+        data = fp.read()
+    assert data == b'123', 'unexpected data'
+    print(filepath)
+    fs.rm(filepath)

@@ -22,7 +22,7 @@ from v3io.dataplane import Client
 import v3io
 
 from .file import V3ioFile
-from .path import split_container, unslash, path_equal
+from .path import split_container, unslash, path_equal, strip_schema
 from .utils import handle_v3io_errors
 
 _file_key = 'key'
@@ -52,6 +52,7 @@ class V3ioFS(AbstractFileSystem):
     def ls(self, path, detail=True, **kwargs):
         """Lists files & directories under path"""
         full_path = path
+        path = strip_schema(path)
         container, path = split_container(path)
         if not container:
             return self._list_containers(detail)
@@ -134,6 +135,7 @@ class V3ioFS(AbstractFileSystem):
         if not truncate:  # TODO
             raise ValueError('only truncate touch supported')
 
+        path = strip_schema(path)
         container, path = split_container(path)
         resp = self._client.put_object(
             container, path,
@@ -162,6 +164,7 @@ class V3ioFS(AbstractFileSystem):
             directory, or something else) and other FS-specific keys.
         """
 
+        path = strip_schema(path)
         out = self.ls(path, detail=True, **kw)
         entries = [o for o in out if path_equal(o['name'], path)]
 
