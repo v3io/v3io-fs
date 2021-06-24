@@ -35,18 +35,3 @@ def test_split_container(path, expected, raises):
 
     out = v3path.split_container(path)
     assert expected == tuple(out), 'split'
-
-
-unslash_cases = [
-    # path, expected
-    ('', ''),
-    ('/', ''),
-    ('/a', '/a'),
-    ('/a/', '/a'),
-]
-
-
-@pytest.mark.parametrize('path, expected', unslash_cases)
-def test_unslash(path, expected):
-    out = v3path.unslash(path)
-    assert out == expected

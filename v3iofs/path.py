@@ -46,10 +46,8 @@ def split_container(path):
 
 
 def unslash(s):
-    """Remove optional slash from the end."""
-    if not s or s[-1] != '/':
-        return s
-    return s[:-1]
+    """Remove optional slashes from the start/end."""
+    return s.strip('/')
 
 
 def _norm(p):
