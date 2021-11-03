@@ -45,7 +45,7 @@ def test_ls(fs: V3ioFS, new_file, path_cls):
 
 def test_ls_with_marker(fs: V3ioFS, new_file):
     for i in range(1200):
-        new_file(fs._client, f'{test_dir}/test_ls/test-file{i}')  # Make sure dir exists
+        new_file(fs._client, f'{test_dir}/test_ls/test-file{i}')
     path = str(f'/{test_container}/{test_dir}/test_ls')
 
     out = fs.ls(path, detail=True)
