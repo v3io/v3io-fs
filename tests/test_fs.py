@@ -43,6 +43,15 @@ def test_ls(fs: V3ioFS, new_file, path_cls):
     assert all(isinstance(p, str) for p in out), 'not string'
 
 
+def test_ls_with_marker(fs: V3ioFS, new_file):
+    for i in range(1200):
+        new_file(fs._client, f'{test_dir}/test_ls/test-file{i}')  # Make sure dir exists
+    path = str(f'/{test_container}/{test_dir}/test_ls')
+
+    out = fs.ls(path, detail=True)
+    assert len(out) == 1200, 'not all files returned'
+
+
 def test_rm(fs: V3ioFS, tmp_obj):
     path = tmp_obj.path
     fs.rm(path)
