@@ -84,7 +84,7 @@ class V3ioFS(AbstractFileSystem):
 
         if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
             marker = resp.output.next_marker
-            out = out + self.ls(full_path, detail, marker)
+            out.extend(self.ls(full_path, detail, marker))
         return out
 
     def _ls_file(self, container, path, detail, marker=None):
