@@ -49,7 +49,7 @@ class V3ioFS(AbstractFileSystem):
         super().__init__(**kw)
         self._client = _new_client(v3io_api, v3io_access_key)
 
-    def ls(self, path, detail=True, **kwargs):
+    def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
         full_path = path
         path = strip_schema(path)
@@ -62,6 +62,7 @@ class V3ioFS(AbstractFileSystem):
             path=path,
             get_all_attributes=True,
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
+            marker=marker,
         )
 
         # Ignore 404's here
@@ -69,21 +70,24 @@ class V3ioFS(AbstractFileSystem):
             raise Exception(
                 f'{resp.status_code} received while accessing {path!r}')
 
-        # If not data, try to find file in parent directory
-        if not _has_data(resp):
-            return [self._ls_file(container, path, detail)]
-
         out = (
                 _resp_dirs(resp, container, detail) +
                 _resp_files(resp, container, detail)
         )
 
-        if not out:
-            raise FileNotFoundError(f'{full_path!r} not found')
+        if not marker:
+            # first time in
+            if not _has_data(resp):
+                return [self._ls_file(container, path, detail)]
+            if not out:
+                raise FileNotFoundError(f'{full_path!r} not found')
 
+        if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
+            marker = resp.output.next_marker
+            out.extend(self.ls(full_path, detail, marker))
         return out
 
-    def _ls_file(self, container, path, detail):
+    def _ls_file(self, container, path, detail, marker=None):
         # '/a/b/c' -> ('/a/b', 'c')
         dirname, _, filename = path.rpartition('/')
         resp = self._client.get_container_contents(
@@ -91,6 +95,7 @@ class V3ioFS(AbstractFileSystem):
             path=dirname,
             get_all_attributes=True,
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
+            marker=marker,
         )
 
         full_path = f'/{container}/{path}'
@@ -98,7 +103,11 @@ class V3ioFS(AbstractFileSystem):
         contents = getattr(resp.output, 'contents', [])
         objs = [obj for obj in contents if path_equal(obj.key, path)]
         if not objs:
-            raise FileNotFoundError(full_path)
+            if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
+                marker = resp.output.next_marker
+                return self._ls_file(container, path, detail, marker)
+            else:
+                raise FileNotFoundError(full_path)
 
         obj = objs[0]
         if not detail:
