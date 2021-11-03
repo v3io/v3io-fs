@@ -82,7 +82,7 @@ class V3ioFS(AbstractFileSystem):
             if not out:
                 raise FileNotFoundError(f'{full_path!r} not found')
 
-        if hasattr(resp.output, 'next_marker'):
+        if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
             marker = resp.output.next_marker
             out = out + self.ls(path, detail, marker)
 
@@ -104,7 +104,7 @@ class V3ioFS(AbstractFileSystem):
         contents = getattr(resp.output, 'contents', [])
         objs = [obj for obj in contents if path_equal(obj.key, path)]
         if not objs:
-            if hasattr(resp.output, 'next_marker'):
+            if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
                 marker = resp.output.next_marker
                 return self._ls_file(container, path, detail, marker)
             else:
