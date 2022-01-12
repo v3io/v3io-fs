@@ -51,6 +51,7 @@ class V3ioFS(AbstractFileSystem):
 
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
+
         full_path = path
         path = strip_schema(path)
         container, path = split_container(path)
@@ -173,19 +174,46 @@ class V3ioFS(AbstractFileSystem):
             directory, or something else) and other FS-specific keys.
         """
 
-        path = strip_schema(path)
-        out = self.ls(path, detail=True, **kw)
-        entries = [o for o in out if path_equal(o['name'], path)]
+        path_with_container = strip_schema(path)
+        container, path_without_container = split_container(path_with_container)
 
-        if len(entries) == 1:
-            entry = entries[0]
-            entry.setdefault('size', None)
+        # First, we try to get the file's attributes, which will fail with a 404 if it's actually a directory.
+        resp = self._client.get_item(container,
+                                     path_without_container,
+                                     attribute_names=['__size', '__mtime_secs', '__mtime_nsecs', '__mode', '__gid', '__uid'],
+                                     raise_for_status=v3io.dataplane.RaiseForStatus.never)
+
+        if resp.status_code == 200:
+            mtime = int(resp.output.item['__mtime_secs']) + int(resp.output.item['__mtime_nsecs']) / 10 ** 9
+            entry = {
+                'name': path_with_container,
+                'type': 'file',
+                'size': resp.output.item['__size'],
+                'mtime': mtime,
+                'mode': resp.output.item['__mode'],
+                'gid': resp.output.item['__gid'],
+                'uid': resp.output.item['__uid'],
+            }
             return entry
+        elif resp.status_code == 404:
+            pass  # The file may still be a directory.
+        else:
+            raise Exception(f'{resp.status_code} received while getting the attributes of {path_with_container!r}')
 
-        if len(entries) >= 1 or out:
-            return {'name': path, 'size': 0, 'type': 'directory'}
+        # Check the existence of a directory at the provided path.
+        resp = self._client.get_container_contents(
+            container=container,
+            path=path_without_container,
+            raise_for_status=v3io.dataplane.RaiseForStatus.never,
+            limit=0
+        )
 
-        raise FileNotFoundError(path)
+        if resp.status_code == 200:
+            return {'name': path_with_container, 'size': 0, 'type': 'directory'}
+        elif resp.status_code == 404:
+            raise FileNotFoundError(path_with_container)
+        else:
+            raise Exception(f'{resp.status_code} received while listing {path_with_container!r}')
 
     def _open(
             self,
