@@ -1,5 +1,4 @@
-dask[complete]>=2.16.0; python_version >= '3.7'
-dask[complete]>=2.16.0, <=2021.03.0; python_version < '3.7'
+dask[complete]>=2021.10.0
 flake8-bugbear>=20.1.4
 flake8>=3.8.1
 pandas>=1.1
