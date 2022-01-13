@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+.PHONY: all
 all:
 	$(error please pick a target)
 
-test:
-	find v3iofs -name '*.pyc' -exec rm {} \;
-	find tests -name '*.pyc' -exec rm {} \;
+.PHONY: lint
+lint:
 	flake8 v3iofs tests
+
+.PHONY: test
+test:
 	python -m pytest \
 	    -rf -v \
 	    --disable-warnings \
 	    --doctest-modules \
 	    tests v3iofs
 
+.PHONY: test-docker
 test-docker:
 	docker build \
 	    -f tests/Dockerfile \
@@ -33,6 +37,7 @@ test-docker:
 	    --build-arg V3IO_ACCESS_KEY=$(V3IO_ACCESS_KEY) \
 	    .
 
+.PHONY: test-docker-fsspec-6
 test-docker-fsspec-6:
 	docker build \
 	    -f tests/Dockerfile.fsspec-6 \
@@ -41,16 +46,18 @@ test-docker-fsspec-6:
 	    --build-arg V3IO_ACCESS_KEY=$(V3IO_ACCESS_KEY) \
 	    .
 
-publish:
-	@echo Checking clean tree
-	test -z "$(shell git status -su)"
-	@echo "Checking for VERSION in environment (make publish VERSION=1.2.3)"
-	test -n "$(VERSION)"
-	sed -i "s/__version__ = '.*'/__version__ = '$(VERSION)'/" \
-	    v3iofs/__init__.py
-	git commit -m 'version $(VERSION)' v3iofs/__init__.py
-	rm -fr dist build
-	python setup.py sdist
-	python -m twine upload dist/*.tar.gz
-	git tag version-$(VERSION)
-	git push && git push --tags
+.PHONY: env
+env:
+	pip install -r requirements.txt
+
+.PHONY: dev-env
+dev-env: env
+	pip install -r dev-requirements.txt
+
+.PHONY: set-version
+set-version:
+	python set-version.py
+
+.PHONY: dist
+dist: dev-env
+	pipenv run python -m build --sdist --wheel --outdir dist/ .

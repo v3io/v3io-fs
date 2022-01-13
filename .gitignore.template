@@ -1,7 +1,10 @@
+.gitignore
 *notebooks/*
 .envrc
 .pytest_cache
 .vscode
+build
 dist
 v3iofs.egg-info/
 .idea/
+Pipfile

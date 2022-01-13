@@ -19,7 +19,7 @@ __all__ = [
     'V3ioFile',
 ]
 
-__version__ = '0.1.6'
+__version__ = 'unstable'
 
 import fsspec
 
@@ -31,6 +31,7 @@ if hasattr(fsspec, 'register_implementation'):
     fsspec.register_implementation('v3io', V3ioFS, clobber=True)
 else:
     from fsspec.registry import known_implementations
+
     known_implementations['v3io'] = {
         'class': 'v3iofs.V3ioFS',
         'err': 'Please install v3iofs to use the v3io fileysstem class'
