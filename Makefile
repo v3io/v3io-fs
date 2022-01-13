@@ -59,5 +59,5 @@ set-version:
 	python set-version.py
 
 .PHONY: dist
-dist: dev-env
+dist:
 	python -m build --sdist --wheel --outdir dist/ .
