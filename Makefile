@@ -60,4 +60,5 @@ set-version:
 
 .PHONY: dist
 dist:
+    rm -rf dist build
 	python -m build --sdist --wheel --outdir dist/ .
