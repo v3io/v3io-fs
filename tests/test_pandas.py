@@ -14,7 +14,6 @@
 from datetime import datetime
 import pandas as pd
 from conftest import test_container, test_dir
-import uuid
 
 csv_data = b'''
 name,item,price,quantity

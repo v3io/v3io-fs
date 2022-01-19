@@ -13,7 +13,6 @@
 # limitations under the License.
 from datetime import datetime
 from pathlib import Path
-import uuid
 
 import dask.bag as db
 import dask.dataframe as dd

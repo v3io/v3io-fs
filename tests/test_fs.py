@@ -14,7 +14,6 @@
 from datetime import datetime, timezone
 from os.path import basename, dirname
 from pathlib import Path
-import uuid
 
 import fsspec
 import pytest
