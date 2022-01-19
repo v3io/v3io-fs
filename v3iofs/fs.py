@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from datetime import datetime, timezone
 from os import environ
+import time
 from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
@@ -29,6 +28,50 @@ _file_key = 'key'
 _dir_key = 'prefix'
 
 
+class _Cache:
+    def __init__(self, capacity, cache_validity_seconds):
+        self._cache = {}
+        self._time_to_key = []
+        self._capacity = capacity
+        self._cache_validity_seconds = cache_validity_seconds
+
+    def put(self, key, value):
+        start_time = time.monotonic()
+
+        self._cache[key] = (start_time, value)
+        self._time_to_key.append((start_time, key))
+
+        # GC
+        if self._capacity and len(self._cache) > self._capacity:
+            self._gc(start_time)
+
+    def get(self, key):
+        start_time = time.monotonic()
+
+        lookup_result = self._cache.get(key)
+        if lookup_result is None:
+            # print(f'Not found in cache: {key}')
+            return None
+        key_time, value = lookup_result
+        if key_time <= start_time + self._cache_validity_seconds:
+            # print(f'Found in cache: {key}')
+            return value
+
+        # print(f'Found in cache but too old: {key}')
+
+        self._gc(start_time)
+
+        return None
+
+    def _gc(self, until):
+        for key_time, key in self._time_to_key:
+            num_removed = 0
+            if key_time > until + self._cache_validity_seconds or self._capacity and len(self._cache) > self._capacity:
+                del self._cache[key]
+                num_removed += 1
+            self._time_to_key = self._time_to_key[num_removed:]
+
+
 class V3ioFS(AbstractFileSystem):
     """File system driver to v3io
 
@@ -38,16 +81,23 @@ class V3ioFS(AbstractFileSystem):
         API host name (or V3IO_API environment)
     v3io_access_key: str
         v3io access key (or V3IO_ACCESS_KEY from environment)
+    cache_validity_seconds: int | str | None
+        if set, caching will be used for info(), with invalidation after cache_validity_seconds.
+    cache_capacity: int | str
+        limits the size of the cache. If cache_validity_seconds is not set, this parameter has no effect.
     **kw:
         Passed to fsspec.AbstractFileSystem
     """
 
     protocol = 'v3io'
 
-    def __init__(self, v3io_api=None, v3io_access_key=None, **kw):
+    def __init__(self, v3io_api=None, v3io_access_key=None, cache_validity_seconds=None, cache_capacity=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
         self._client = _new_client(v3io_api, v3io_access_key)
+        self._cache = None
+        if cache_validity_seconds:
+            self._cache = _Cache(int(cache_capacity), int(cache_validity_seconds))
 
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
@@ -175,6 +225,12 @@ class V3ioFS(AbstractFileSystem):
         """
 
         path_with_container = strip_schema(path)
+
+        if self._cache:
+            lookup_result = self._cache.get(path_with_container)
+            if lookup_result:
+                return lookup_result
+
         container, path_without_container = split_container(path_with_container)
 
         # First, we try to get the file's attributes, which will fail with a 404 if it's actually a directory.
@@ -194,6 +250,8 @@ class V3ioFS(AbstractFileSystem):
                 'gid': resp.output.item['__gid'],
                 'uid': resp.output.item['__uid'],
             }
+            if self._cache:
+                self._cache.put(path_with_container, entry)
             return entry
         elif resp.status_code == 404:
             pass  # The file may still be a directory.
@@ -209,7 +267,10 @@ class V3ioFS(AbstractFileSystem):
         )
 
         if resp.status_code == 200:
-            return {'name': path_with_container, 'size': 0, 'type': 'directory'}
+            entry = {'name': path_with_container, 'size': 0, 'type': 'directory'}
+            if self._cache:
+                self._cache.put(path_with_container, entry)
+            return entry
         elif resp.status_code == 404:
             raise FileNotFoundError(path_with_container)
         else:
