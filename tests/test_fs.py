@@ -109,7 +109,7 @@ def test_directory(fs, tree):
 
 def test_fsspec():
     fs = fsspec.filesystem("v3io")
-    dirpath = f'/{test_container}/{test_dir}/fss-{uuid.uuid4().hex}'
+    dirpath = f'/{test_container}/{test_dir}/fss'
     file_name = datetime.now().strftime('test_%f')
     filepath = f'{dirpath}/{file_name}.txt'
     with fs.open(filepath, 'wb') as fp:
