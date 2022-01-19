@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from datetime import datetime, timezone
 from os.path import basename, dirname
 from pathlib import Path
+import uuid
 
 import fsspec
 import pytest
@@ -109,7 +109,7 @@ def test_directory(fs, tree):
 
 def test_fsspec():
     fs = fsspec.filesystem("v3io")
-    dirpath = f'/{test_container}/{test_dir}/fss'
+    dirpath = f'/{test_container}/{test_dir}/fss-{uuid.uuid4().hex}'
     file_name = datetime.now().strftime('test_%f')
     filepath = f'{dirpath}/{file_name}.txt'
     with fs.open(filepath, 'wb') as fp:
@@ -125,5 +125,4 @@ def test_fsspec():
     with fs.open(prefix + filepath) as fp:
         data = fp.read()
     assert data == b'123', 'unexpected data'
-    print(filepath)
     fs.rm(filepath)
