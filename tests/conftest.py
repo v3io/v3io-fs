@@ -31,7 +31,7 @@ Obj = namedtuple('Obj', 'path data')
 
 @pytest.fixture
 def fs():
-    fs = V3ioFS()
+    fs = V3ioFS(cache_validity_seconds=0)
     yield fs
     fs._client.close()
 
