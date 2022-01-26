@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 from datetime import datetime
 from pathlib import Path
 
@@ -29,7 +27,6 @@ Beth,Lettuce,1.2,13
 Summer,M&M,2.2,7
 Morty,Twix,1.7,5
 '''
-
 
 tests_root = Path(__file__).absolute().parent
 test_pq = tests_root / 'sanchez.pq'

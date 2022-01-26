@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import uuid
 from collections import namedtuple
 from datetime import datetime
 from http import HTTPStatus
@@ -24,15 +24,14 @@ from v3iofs import V3ioFS
 from v3iofs.fs import _new_client
 
 test_container = 'bigdata'  # TODO: configure
-test_dir = 'v3io-fs-test'
-
+test_dir = f'v3io-fs-test-{uuid.uuid4().hex}'
 
 Obj = namedtuple('Obj', 'path data')
 
 
 @pytest.fixture
 def fs():
-    fs = V3ioFS()
+    fs = V3ioFS(cache_validity_seconds=0)
     yield fs
     fs._client.close()
 
