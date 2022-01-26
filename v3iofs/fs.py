@@ -42,7 +42,7 @@ class _Cache:
         self._time_to_key.append((start_time, key))
 
         # GC
-        if self._capacity and len(self._cache) > self._capacity:
+        if len(self._cache) > self._capacity:
             self._gc(start_time)
 
     def get(self, key):
@@ -50,14 +50,10 @@ class _Cache:
 
         lookup_result = self._cache.get(key)
         if lookup_result is None:
-            # print(f'Not found in cache: {key}')
             return None
         key_time, value = lookup_result
         if key_time <= start_time + self._cache_validity_seconds:
-            # print(f'Found in cache: {key}')
             return value
-
-        # print(f'Found in cache but too old: {key}')
 
         self._gc(start_time)
 
@@ -66,7 +62,7 @@ class _Cache:
     def _gc(self, until):
         for key_time, key in self._time_to_key:
             num_removed = 0
-            if key_time > until + self._cache_validity_seconds or self._capacity and len(self._cache) > self._capacity:
+            if key_time > until + self._cache_validity_seconds or len(self._cache) > self._capacity:
                 del self._cache[key]
                 num_removed += 1
             self._time_to_key = self._time_to_key[num_removed:]
@@ -82,9 +78,9 @@ class V3ioFS(AbstractFileSystem):
     v3io_access_key: str
         v3io access key (or V3IO_ACCESS_KEY from environment)
     cache_validity_seconds: int | str | None
-        if set, caching will be used for info(), with invalidation after cache_validity_seconds.
-    cache_capacity: int | str
-        limits the size of the cache. If cache_validity_seconds is not set, this parameter has no effect.
+        use caching for info(), with invalidation after cache_validity_seconds. Default is 2. Set to 0 to disable.
+    cache_capacity: int | str | None
+        limits the size of the cache. If cache_validity_seconds is not set, this parameter has no effect. Default is 128.
     **kw:
         Passed to fsspec.AbstractFileSystem
     """
@@ -96,7 +92,11 @@ class V3ioFS(AbstractFileSystem):
         super().__init__(**kw)
         self._client = _new_client(v3io_api, v3io_access_key)
         self._cache = None
-        if cache_validity_seconds:
+        if cache_validity_seconds is None:
+            cache_validity_seconds = 2
+        if cache_capacity is None:
+            cache_capacity = 128
+        if cache_validity_seconds > 0:
             self._cache = _Cache(int(cache_capacity), int(cache_validity_seconds))
 
     def ls(self, path, detail=True, marker=None, **kwargs):
