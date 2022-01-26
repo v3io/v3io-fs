@@ -65,6 +65,8 @@ class _Cache:
             if key_time > until + self._cache_validity_seconds or len(self._cache) > self._capacity:
                 del self._cache[key]
                 num_removed += 1
+            else:
+                break
             self._time_to_key = self._time_to_key[num_removed:]
 
 
