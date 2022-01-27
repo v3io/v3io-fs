@@ -58,10 +58,4 @@ class V3ioFile(AbstractBufferedFile):
 
     def _initiate_upload(self):
         """ Create remote file/upload """
-        client: Client = self.fs._client
-        container, path = split_container(self.path)
-        client.object.delete(
-            container=container,
-            path=path,
-            raise_for_status=v3io.dataplane.RaiseForStatus.never,
-        )
+        self.fs.rm_file(self.path)

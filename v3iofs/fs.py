@@ -59,11 +59,20 @@ class _Cache:
 
         return None
 
+    def delete_if_exists(self, key):
+        self._cache.pop(key, None)
+
     def _gc(self, until):
         for key_time, key in self._time_to_key:
             num_removed = 0
             if key_time > until + self._cache_validity_seconds or len(self._cache) > self._capacity:
-                del self._cache[key]
+                result = self._cache.get(key, None)
+                if result:
+                    cache_time, value = result
+                    # cache entry may have been deleted and re-added
+                    if cache_time == key_time:
+                        del self._cache[key]
+
                 num_removed += 1
             else:
                 break
@@ -178,13 +187,13 @@ class V3ioFS(AbstractFileSystem):
         ...  # FIXME
 
     def _rm(self, path):
-        container, path = split_container(path)
+        container, path_without_container = split_container(path)
         if not container:
             raise ValueError(f'bad path: {path:r}')
 
         resp = self._client.delete_object(
             container=container,
-            path=path,
+            path=path_without_container,
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
 
@@ -192,6 +201,9 @@ class V3ioFS(AbstractFileSystem):
         if resp.status_code not in {200, 204, 404, 409}:
             raise Exception(
                 f'{resp.status_code} received while accessing {path!r}')
+
+        if self._cache:
+            self._cache.delete_if_exists(path)
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
