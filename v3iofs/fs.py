@@ -118,58 +118,64 @@ class V3ioFS(AbstractFileSystem):
         container, path = split_container(path)
         if not container:
             return self._list_containers(detail)
+        ext_out = []
 
-        resp = self._client.get_container_contents(
-            container=container,
-            path=path,
-            get_all_attributes=True,
-            raise_for_status=v3io.dataplane.RaiseForStatus.never,
-            marker=marker,
-        )
+        while True:
+            resp = self._client.get_container_contents(
+                container=container,
+                path=path,
+                get_all_attributes=True,
+                raise_for_status=v3io.dataplane.RaiseForStatus.never,
+                marker=marker,
+            )
 
-        # Ignore 404's here
-        if resp.status_code not in {200, 404}:
-            raise Exception(
-                f'{resp.status_code} received while accessing {path!r}')
+            # Ignore 404's here
+            if resp.status_code not in {200, 404}:
+                raise Exception(
+                    f'{resp.status_code} received while accessing {path!r}')
 
-        out = (
-                _resp_dirs(resp, container, detail) +
-                _resp_files(resp, container, detail)
-        )
+            out = (
+                    _resp_dirs(resp, container, detail) +
+                    _resp_files(resp, container, detail)
+            )
 
-        if not marker:
-            # first time in
-            if not _has_data(resp):
-                return [self._ls_file(container, path, detail)]
-            if not out:
-                raise FileNotFoundError(f'{full_path!r} not found')
+            if not marker:
+                # first time in
+                if not _has_data(resp):
+                    return [self._ls_file(container, path, detail)]
+                if not out:
+                    raise FileNotFoundError(f'{full_path!r} not found')
 
-        if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
-            marker = resp.output.next_marker
-            out.extend(self.ls(full_path, detail, marker))
-        return out
+            ext_out.extend(out)
+            if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
+                marker = resp.output.next_marker
+            else:
+                break
+        return ext_out
 
     def _ls_file(self, container, path, detail, marker=None):
         # '/a/b/c' -> ('/a/b', 'c')
         dirname, _, filename = path.rpartition('/')
-        resp = self._client.get_container_contents(
-            container=container,
-            path=dirname,
-            get_all_attributes=True,
-            raise_for_status=v3io.dataplane.RaiseForStatus.never,
-            marker=marker,
-        )
+        while True:
+            resp = self._client.get_container_contents(
+                container=container,
+                path=dirname,
+                get_all_attributes=True,
+                raise_for_status=v3io.dataplane.RaiseForStatus.never,
+                marker=marker,
+            )
 
-        full_path = f'/{container}/{path}'
-        handle_v3io_errors(resp, full_path)
-        contents = getattr(resp.output, 'contents', [])
-        objs = [obj for obj in contents if path_equal(obj.key, path)]
-        if not objs:
-            if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
-                marker = resp.output.next_marker
-                return self._ls_file(container, path, detail, marker)
+            full_path = f'/{container}/{path}'
+            handle_v3io_errors(resp, full_path)
+            contents = getattr(resp.output, 'contents', [])
+            objs = [obj for obj in contents if path_equal(obj.key, path)]
+            if not objs:
+                if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
+                    marker = resp.output.next_marker
+                else:
+                    raise FileNotFoundError(full_path)
             else:
-                raise FileNotFoundError(full_path)
+                break
 
         obj = objs[0]
         if not detail:
