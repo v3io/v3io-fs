@@ -369,7 +369,7 @@ def info_of(container_name, obj, name_key):
 def split_auth(url):
     """
     >>> split_auth('v3io://api_key:s3cr3t@domain.company.com')
-    ('v3io://domain.company.com', 's3cr3t')
+    ('v3io://domain.company.com', 's3cr3ta')
     >>> split_auth('v3io://domain.company.com')
     ('v3io://domain.company.com', '')
     """
