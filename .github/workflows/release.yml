@@ -35,12 +35,11 @@ jobs:
           make dev-env
       - name: lint
         run: make lint
-      # disabled until a setup is available from github
-      # - name: test
-      #   env:
-      #     V3IO_API: ${{ secrets.V3IO_API }}
-      #     V3IO_ACCESS_KEY: ${{ secrets.V3IO_ACCESS_KEY }}
-      #   run: make test
+      - name: test
+        env:
+          V3IO_API: ${{ secrets.V3IO_API }}
+          V3IO_ACCESS_KEY: ${{ secrets.V3IO_ACCESS_KEY }}
+        run: make test
       - name: Set version
         run: make set-version
       - name: Build binary wheel and source tarball
