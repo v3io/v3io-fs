@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import traceback
 from datetime import datetime, timezone
 from os import environ
 import time
@@ -243,7 +244,6 @@ class V3ioFS(AbstractFileSystem):
             keys: name (full path in the FS), size (in bytes), type (file,
             directory, or something else) and other FS-specific keys.
         """
-
         path_with_container = strip_schema(path)
 
         if self._cache:
@@ -276,7 +276,8 @@ class V3ioFS(AbstractFileSystem):
         elif resp.status_code == 404:
             pass  # The file may still be a directory.
         else:
-            raise Exception(f'{resp.status_code} received while getting the attributes of {path_with_container!r}')
+            raise Exception(f'{resp.status_code} received while getting the attributes of {path_with_container!r}. '
+                            f'body={resp.body}, headers={resp.headers}')
 
         # Check the existence of a directory at the provided path.
         resp = self._client.get_container_contents(
@@ -295,6 +296,24 @@ class V3ioFS(AbstractFileSystem):
             raise FileNotFoundError(path_with_container)
         else:
             raise Exception(f'{resp.status_code} received while listing {path_with_container!r}')
+
+    # Override to print the otherwise silenced exception.
+    def isdir(self, path):
+        """Is this entry directory-like?"""
+        try:
+            return self.info(path)["type"] == "directory"
+        except IOError:
+            traceback.print_exc()
+            return False
+
+    # Override to print the otherwise silenced exception.
+    def isfile(self, path):
+        """Is this entry file-like?"""
+        try:
+            return self.info(path)["type"] == "file"
+        except BaseException:
+            traceback.print_exc()
+            return False
 
     def _open(
             self,
