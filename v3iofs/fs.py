@@ -311,6 +311,8 @@ class V3ioFS(AbstractFileSystem):
         """Is this entry file-like?"""
         try:
             return self.info(path)["type"] == "file"
+        except FileNotFoundError:
+            return False
         except BaseException:
             traceback.print_exc()
             return False
