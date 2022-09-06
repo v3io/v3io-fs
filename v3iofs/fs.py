@@ -37,26 +37,25 @@ class _Cache:
         self._cache_validity_seconds = cache_validity_seconds
 
     def put(self, key, value):
-        start_time = time.monotonic()
+        now = time.monotonic()
 
-        self._cache[key] = (start_time, value)
-        self._time_to_key.append((start_time, key))
+        self._cache[key] = (now, value)
+        self._time_to_key.append((now, key))
 
         # GC
         if len(self._cache) > self._capacity:
-            self._gc(start_time)
+            self._gc(now)
 
     def get(self, key):
-        start_time = time.monotonic()
-
         lookup_result = self._cache.get(key)
         if lookup_result is None:
             return None
         key_time, value = lookup_result
-        if start_time <= key_time + self._cache_validity_seconds:
+        now = time.monotonic()
+        if now <= key_time + self._cache_validity_seconds:
             return value
 
-        self._gc(start_time)
+        self._gc(now)
 
         return None
 
