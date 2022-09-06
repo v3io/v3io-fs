@@ -53,7 +53,7 @@ class _Cache:
         if lookup_result is None:
             return None
         key_time, value = lookup_result
-        if key_time <= start_time + self._cache_validity_seconds:
+        if start_time <= key_time + self._cache_validity_seconds:
             return value
 
         self._gc(start_time)
