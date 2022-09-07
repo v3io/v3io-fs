@@ -15,6 +15,7 @@ import traceback
 from datetime import datetime, timezone
 from os import environ
 import time
+from threading import Lock
 from urllib.parse import urlparse
 
 from fsspec.spec import AbstractFileSystem
@@ -32,15 +33,16 @@ _dir_key = 'prefix'
 class _Cache:
     def __init__(self, capacity, cache_validity_seconds):
         self._cache = {}
-        self._time_to_key = []
+        self._expiry_to_key = []
         self._capacity = capacity
         self._cache_validity_seconds = cache_validity_seconds
 
     def put(self, key, value):
         now = time.monotonic()
+        expiry = now + self._cache_validity_seconds
 
-        self._cache[key] = (now, value)
-        self._time_to_key.append((now, key))
+        self._cache[key] = (expiry, value)
+        self._expiry_to_key.append((expiry, key))
 
         # GC
         if len(self._cache) > self._capacity:
@@ -50,9 +52,9 @@ class _Cache:
         lookup_result = self._cache.get(key)
         if lookup_result is None:
             return None
-        key_time, value = lookup_result
+        expiry, value = lookup_result
         now = time.monotonic()
-        if now <= key_time + self._cache_validity_seconds:
+        if now <= expiry:
             return value
 
         self._gc(now)
@@ -63,20 +65,20 @@ class _Cache:
         self._cache.pop(key, None)
 
     def _gc(self, until):
-        for key_time, key in self._time_to_key:
-            num_removed = 0
-            if key_time > until + self._cache_validity_seconds or len(self._cache) > self._capacity:
+        num_removed = 0
+        for expiry, key in self._expiry_to_key:
+            if expiry <= until or len(self._cache) > self._capacity:
                 result = self._cache.get(key, None)
                 if result:
                     cache_time, value = result
                     # cache entry may have been deleted and re-added
-                    if cache_time == key_time:
+                    if cache_time == expiry:
                         del self._cache[key]
 
                 num_removed += 1
             else:
                 break
-            self._time_to_key = self._time_to_key[num_removed:]
+        self._expiry_to_key = self._expiry_to_key[num_removed:]
 
 
 class V3ioFS(AbstractFileSystem):
@@ -109,6 +111,7 @@ class V3ioFS(AbstractFileSystem):
             cache_capacity = 128
         if cache_validity_seconds > 0:
             self._cache = _Cache(int(cache_capacity), int(cache_validity_seconds))
+            self._cache_lock = Lock()
 
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
@@ -209,7 +212,8 @@ class V3ioFS(AbstractFileSystem):
                 f'{resp.status_code} received while accessing {path!r}')
 
         if self._cache:
-            self._cache.delete_if_exists(path)
+            with self._cache_lock:
+                self._cache.delete_if_exists(path)
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
@@ -246,7 +250,8 @@ class V3ioFS(AbstractFileSystem):
         path_with_container = strip_schema(path)
 
         if self._cache:
-            lookup_result = self._cache.get(path_with_container)
+            with self._cache_lock:
+                lookup_result = self._cache.get(path_with_container)
             if lookup_result:
                 return lookup_result
 
@@ -270,7 +275,8 @@ class V3ioFS(AbstractFileSystem):
                 'uid': resp.output.item['__uid'],
             }
             if self._cache:
-                self._cache.put(path_with_container, entry)
+                with self._cache_lock:
+                    self._cache.put(path_with_container, entry)
             return entry
         elif resp.status_code == 404:
             pass  # The file may still be a directory.
@@ -289,7 +295,8 @@ class V3ioFS(AbstractFileSystem):
         if resp.status_code == 200:
             entry = {'name': path_with_container, 'size': 0, 'type': 'directory'}
             if self._cache:
-                self._cache.put(path_with_container, entry)
+                with self._cache_lock:
+                    self._cache.put(path_with_container, entry)
             return entry
         elif resp.status_code == 404:
             raise FileNotFoundError(path_with_container)
