@@ -13,6 +13,7 @@
 # limitations under the License.
 import time
 import traceback
+import weakref
 from datetime import datetime, timezone
 from os import environ
 from threading import Lock
@@ -113,6 +114,7 @@ class V3ioFS(AbstractFileSystem):
         if cache_validity_seconds > 0:
             self._cache = _Cache(int(cache_capacity), int(cache_validity_seconds))
             self._cache_lock = Lock()
+        weakref.finalize(self, lambda: self._client.close())
 
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
