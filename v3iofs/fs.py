@@ -11,23 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
 import traceback
 from datetime import datetime, timezone
 from os import environ
-import time
 from threading import Lock
 from urllib.parse import urlparse
 
+import v3io
 from fsspec.spec import AbstractFileSystem
 from v3io.dataplane import Client
-import v3io
 
 from .file import V3ioFile
-from .path import split_container, unslash, path_equal, strip_schema
+from .path import path_equal, split_container, strip_schema, unslash
 from .utils import handle_v3io_errors
 
-_file_key = 'key'
-_dir_key = 'prefix'
+_file_key = "key"
+_dir_key = "prefix"
 
 
 class _Cache:
@@ -93,12 +93,13 @@ class V3ioFS(AbstractFileSystem):
     cache_validity_seconds: int | str | None
         use caching for info(), with invalidation after cache_validity_seconds. Default is 2. Set to 0 to disable.
     cache_capacity: int | str | None
-        limits the size of the cache. If cache_validity_seconds is not set, this parameter has no effect. Default is 128.
+        limits the size of the cache. If cache_validity_seconds is not set, this parameter has no effect.
+        Default is 128.
     **kw:
         Passed to fsspec.AbstractFileSystem
     """
 
-    protocol = 'v3io'
+    protocol = "v3io"
 
     def __init__(self, v3io_api=None, v3io_access_key=None, cache_validity_seconds=None, cache_capacity=None, **kw):
         # TODO: Support storage options for creds (in kw)
@@ -134,23 +135,19 @@ class V3ioFS(AbstractFileSystem):
 
             # Ignore 404's here
             if resp.status_code not in {200, 404}:
-                raise Exception(
-                    f'{resp.status_code} received while accessing {path!r}')
+                raise Exception(f"{resp.status_code} received while accessing {path!r}")
 
-            out = (
-                    _resp_dirs(resp, container, detail) +
-                    _resp_files(resp, container, detail)
-            )
+            out = _resp_dirs(resp, container, detail) + _resp_files(resp, container, detail)
 
             if not marker:
                 # first time in
                 if not _has_data(resp):
                     return [self._ls_file(container, path, detail)]
                 if not out:
-                    raise FileNotFoundError(f'{full_path!r} not found')
+                    raise FileNotFoundError(f"{full_path!r} not found")
 
             ext_out.extend(out)
-            if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
+            if hasattr(resp.output, "next_marker") and resp.output.next_marker:
                 marker = resp.output.next_marker
             else:
                 break
@@ -158,7 +155,7 @@ class V3ioFS(AbstractFileSystem):
 
     def _ls_file(self, container, path, detail, marker=None):
         # '/a/b/c' -> ('/a/b', 'c')
-        dirname, _, filename = path.rpartition('/')
+        dirname, _, filename = path.rpartition("/")
         while True:
             resp = self._client.get_container_contents(
                 container=container,
@@ -168,12 +165,12 @@ class V3ioFS(AbstractFileSystem):
                 marker=marker,
             )
 
-            full_path = f'/{container}/{path}'
+            full_path = f"/{container}/{path}"
             handle_v3io_errors(resp, full_path)
-            contents = getattr(resp.output, 'contents', [])
+            contents = getattr(resp.output, "contents", [])
             objs = [obj for obj in contents if path_equal(obj.key, path)]
             if not objs:
-                if hasattr(resp.output, 'next_marker') and resp.output.next_marker:
+                if hasattr(resp.output, "next_marker") and resp.output.next_marker:
                     marker = resp.output.next_marker
                 else:
                     raise FileNotFoundError(full_path)
@@ -186,9 +183,8 @@ class V3ioFS(AbstractFileSystem):
         return info_of(container, obj, _file_key)
 
     def _list_containers(self, detail):
-        resp = self._client.get_containers(
-            raise_for_status=v3io.dataplane.RaiseForStatus.never)
-        handle_v3io_errors(resp, 'containers')
+        resp = self._client.get_containers(raise_for_status=v3io.dataplane.RaiseForStatus.never)
+        handle_v3io_errors(resp, "containers")
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
@@ -198,7 +194,7 @@ class V3ioFS(AbstractFileSystem):
     def _rm(self, path):
         container, path_without_container = split_container(path)
         if not container:
-            raise ValueError(f'bad path: {path:r}')
+            raise ValueError(f"bad path: {path:r}")
 
         resp = self._client.delete_object(
             container=container,
@@ -208,8 +204,7 @@ class V3ioFS(AbstractFileSystem):
 
         # Ignore 404's and 409's in delete
         if resp.status_code not in {200, 204, 404, 409}:
-            raise Exception(
-                f'{resp.status_code} received while accessing {path!r}')
+            raise Exception(f"{resp.status_code} received while accessing {path!r}")
 
         if self._cache:
             with self._cache_lock:
@@ -217,14 +212,11 @@ class V3ioFS(AbstractFileSystem):
 
     def touch(self, path, truncate=True, **kwargs):
         if not truncate:  # TODO
-            raise ValueError('only truncate touch supported')
+            raise ValueError("only truncate touch supported")
 
         path = strip_schema(path)
         container, path = split_container(path)
-        resp = self._client.put_object(
-            container, path,
-            raise_for_status=v3io.dataplane.RaiseForStatus.never
-        )
+        resp = self._client.put_object(container, path, raise_for_status=v3io.dataplane.RaiseForStatus.never)
 
         handle_v3io_errors(resp, path)
 
@@ -258,21 +250,23 @@ class V3ioFS(AbstractFileSystem):
         container, path_without_container = split_container(path_with_container)
 
         # First, we try to get the file's attributes, which will fail with a 404 if it's actually a directory.
-        resp = self._client.get_item(container,
-                                     path_without_container,
-                                     attribute_names=['__size', '__mtime_secs', '__mtime_nsecs', '__mode', '__gid', '__uid'],
-                                     raise_for_status=v3io.dataplane.RaiseForStatus.never)
+        resp = self._client.get_item(
+            container,
+            path_without_container,
+            attribute_names=["__size", "__mtime_secs", "__mtime_nsecs", "__mode", "__gid", "__uid"],
+            raise_for_status=v3io.dataplane.RaiseForStatus.never,
+        )
 
         if resp.status_code == 200:
-            mtime = int(resp.output.item['__mtime_secs']) + int(resp.output.item['__mtime_nsecs']) / 10 ** 9
+            mtime = int(resp.output.item["__mtime_secs"]) + int(resp.output.item["__mtime_nsecs"]) / 10**9
             entry = {
-                'name': path_with_container,
-                'type': 'file',
-                'size': resp.output.item['__size'],
-                'mtime': mtime,
-                'mode': resp.output.item['__mode'],
-                'gid': resp.output.item['__gid'],
-                'uid': resp.output.item['__uid'],
+                "name": path_with_container,
+                "type": "file",
+                "size": resp.output.item["__size"],
+                "mtime": mtime,
+                "mode": resp.output.item["__mode"],
+                "gid": resp.output.item["__gid"],
+                "uid": resp.output.item["__uid"],
             }
             if self._cache:
                 with self._cache_lock:
@@ -281,19 +275,21 @@ class V3ioFS(AbstractFileSystem):
         elif resp.status_code == 404:
             pass  # The file may still be a directory.
         else:
-            raise Exception(f'{resp.status_code} received while getting the attributes of {path_with_container!r}. '
-                            f'body={resp.body}, headers={resp.headers}')
+            raise Exception(
+                f"{resp.status_code} received while getting the attributes of {path_with_container!r}. "
+                f"body={resp.body}, headers={resp.headers}"
+            )
 
         # Check the existence of a directory at the provided path.
         resp = self._client.get_container_contents(
             container=container,
             path=path_without_container,
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
-            limit=0
+            limit=0,
         )
 
         if resp.status_code == 200:
-            entry = {'name': path_with_container, 'size': 0, 'type': 'directory'}
+            entry = {"name": path_with_container, "size": 0, "type": "directory"}
             if self._cache:
                 with self._cache_lock:
                     self._cache.put(path_with_container, entry)
@@ -301,7 +297,7 @@ class V3ioFS(AbstractFileSystem):
         elif resp.status_code == 404:
             raise FileNotFoundError(path_with_container)
         else:
-            raise Exception(f'{resp.status_code} received while listing {path_with_container!r}')
+            raise Exception(f"{resp.status_code} received while listing {path_with_container!r}")
 
     # Override to print the otherwise silenced exception.
     def isdir(self, path):
@@ -324,14 +320,14 @@ class V3ioFS(AbstractFileSystem):
             return False
 
     def _open(
-            self,
-            path,
-            mode='rb',
-            block_size=None,
-            autocommit=True,
-            cache_type='readahead',
-            cache_options=None,
-            **kw,
+        self,
+        path,
+        mode="rb",
+        block_size=None,
+        autocommit=True,
+        cache_type="readahead",
+        cache_options=None,
+        **kw,
     ):
         return V3ioFile(
             fs=self,
@@ -346,48 +342,48 @@ class V3ioFS(AbstractFileSystem):
 
 
 def container_path(container):
-    return f'/{container.name}'
+    return f"/{container.name}"
 
 
 def parse_time(creation_date):
     # '2020-03-26T09:42:57.504000+00:00'
     # '2020-03-26T09:42:57.71Z'
-    i = creation_date.rfind('+')  # If not found will be -1, good for Z
-    dt = datetime.strptime(creation_date[:i], '%Y-%m-%dT%H:%M:%S.%f')
+    i = creation_date.rfind("+")  # If not found will be -1, good for Z
+    dt = datetime.strptime(creation_date[:i], "%Y-%m-%dT%H:%M:%S.%f")
     dt = dt.replace(tzinfo=timezone.utc)
     return dt.timestamp()
 
 
 def container_info(container):
     return {
-        'name': container.name,
-        'size': None,
-        'created': parse_time(container.creation_date),
+        "name": container.name,
+        "size": None,
+        "created": parse_time(container.creation_date),
     }
 
 
 _missing = object()
 _extra_obj_attrs = [
     # dest, src, convert
-    ('created', 'creating_time', parse_time),
-    ('atime', 'access_time', parse_time),
-    ('mode', 'mode', lambda v: int(v[1:], base=8)),  # '040755'
-    ('gid', 'gid', lambda v: int(v, 16)),
-    ('uid', 'uid', lambda v: int(v, 16)),
+    ("created", "creating_time", parse_time),
+    ("atime", "access_time", parse_time),
+    ("mode", "mode", lambda v: int(v[1:], base=8)),  # '040755'
+    ("gid", "gid", lambda v: int(v, 16)),
+    ("uid", "uid", lambda v: int(v, 16)),
 ]
 
 
 def obj_path(container, obj, name_key):
     path = unslash(getattr(obj, name_key))
-    return f'/{container}/{path}'
+    return f"/{container}/{path}"
 
 
 def info_of(container_name, obj, name_key):
     info = {
-        'name': obj_path(container_name, obj, name_key),
-        'type': 'file' if hasattr(obj, 'size') else 'directory',
-        'size': getattr(obj, 'size', 0),
-        'mtime': parse_time(obj.last_modified),
+        "name": obj_path(container_name, obj, name_key),
+        "type": "file" if hasattr(obj, "size") else "directory",
+        "size": getattr(obj, "size", 0),
+        "mtime": parse_time(obj.last_modified),
     }
 
     for src, dest, conv in _extra_obj_attrs:
@@ -407,19 +403,19 @@ def split_auth(url):
     ('v3io://domain.company.com', '')
     """
     u = urlparse(url)
-    if '@' not in u.netloc:
-        return (url, '')
+    if "@" not in u.netloc:
+        return (url, "")
 
-    auth, netloc = u.netloc.split('@', 1)
-    if ':' not in auth:
-        raise ValueError('missing : in auth')
-    _, key = auth.split(':', 1)
+    auth, netloc = u.netloc.split("@", 1)
+    if ":" not in auth:
+        raise ValueError("missing : in auth")
+    _, key = auth.split(":", 1)
     u = u._replace(netloc=netloc)
     return (u.geturl(), key)
 
 
 def _resp_dirs(resp, container, detail):
-    if not hasattr(resp.output, 'common_prefixes'):
+    if not hasattr(resp.output, "common_prefixes"):
         return []
 
     objs = resp.output.common_prefixes
@@ -430,7 +426,7 @@ def _resp_dirs(resp, container, detail):
 
 
 def _resp_files(resp, container, detail):
-    if not hasattr(resp.output, 'contents'):
+    if not hasattr(resp.output, "contents"):
         return []
 
     objs = resp.output.contents
@@ -442,13 +438,12 @@ def _resp_files(resp, container, detail):
 
 def _has_data(resp):
     out = resp.output
-    return hasattr(out, 'common_prefixes') or hasattr(out, 'contents')
+    return hasattr(out, "common_prefixes") or hasattr(out, "contents")
 
 
 def _new_client(v3io_api=None, v3io_access_key=None) -> Client:
-    v3io_api = v3io_api or environ.get('V3IO_API')
-    v3io_access_key = \
-        v3io_access_key or environ.get('V3IO_ACCESS_KEY')
+    v3io_api = v3io_api or environ.get("V3IO_API")
+    v3io_access_key = v3io_access_key or environ.get("V3IO_ACCESS_KEY")
 
     return Client(
         endpoint=v3io_api,

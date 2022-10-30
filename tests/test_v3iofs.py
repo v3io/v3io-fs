@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import fsspec
+
 from v3iofs import V3ioFS
 
 
 def test_register():
     cls = fsspec.get_filesystem_class(V3ioFS.protocol)
-    assert cls is V3ioFS, 'not registered'
+    assert cls is V3ioFS, "not registered"
 
-    fs = fsspec.filesystem('v3io')
-    assert isinstance(fs, V3ioFS), f'bad object class - {fs.__class__}'
+    fs = fsspec.filesystem("v3io")
+    assert isinstance(fs, V3ioFS), f"bad object class - {fs.__class__}"

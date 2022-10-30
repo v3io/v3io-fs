@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from v3iofs import path as v3path
-
 import pytest
 
+from v3iofs import path as v3path
 
 split_cases = [
     # path, expected, raises
-    ('', None, True),
-    ('/', ('', ''), False),
-    ('/a', ('a', ''), False),
-    ('/a/b/c', ('a', 'b/c'), False),
+    ("", None, True),
+    ("/", ("", ""), False),
+    ("/a", ("a", ""), False),
+    ("/a/b/c", ("a", "b/c"), False),
 ]
 
 
-@pytest.mark.parametrize('path, expected, raises', split_cases)
+@pytest.mark.parametrize("path, expected, raises", split_cases)
 def test_split_container(path, expected, raises):
     if raises:
         with pytest.raises(ValueError):
@@ -34,4 +33,4 @@ def test_split_container(path, expected, raises):
         return
 
     out = v3path.split_container(path)
-    assert expected == tuple(out), 'split'
+    assert expected == tuple(out), "split"
