@@ -14,19 +14,19 @@
 import uuid
 from collections import namedtuple
 from datetime import datetime
-from http import HTTPStatus
 from getpass import getuser
+from http import HTTPStatus
 
 import pytest
-
 import v3io.dataplane
+
 from v3iofs import V3ioFS
 from v3iofs.fs import _new_client
 
-test_container = 'bigdata'  # TODO: configure
-test_dir = f'v3io-fs-test-{uuid.uuid4().hex}'
+test_container = "bigdata"
+test_dir = f"v3io-fs-test-{uuid.uuid4().hex}"
 
-Obj = namedtuple('Obj', 'path data')
+Obj = namedtuple("Obj", "path data")
 
 
 @pytest.fixture
@@ -41,12 +41,12 @@ def tmp_obj():
     user, ts = getuser(), datetime.now().isoformat()
     client = _new_client()
 
-    path = f'{test_dir}/{user}-test-{ts}'
-    body = f'test data for {user} at {ts}'.encode()
+    path = f"{test_dir}/{user}-test-{ts}"
+    body = f"test data for {user} at {ts}".encode()
     resp = client.put_object(test_container, path, body=body)
-    assert resp.status_code == HTTPStatus.OK, 'create failed'
+    assert resp.status_code == HTTPStatus.OK, "create failed"
 
-    yield Obj(f'/{test_container}/{path}', body)
+    yield Obj(f"/{test_container}/{path}", body)
 
     client.delete_object(test_container, path)
     client.close()
@@ -54,13 +54,13 @@ def tmp_obj():
 
 @pytest.fixture
 def new_file():
-    _client, _path = None, ''
+    _client, _path = None, ""
 
-    def create_file(client, path, body=b''):
+    def create_file(client, path, body=b""):
         nonlocal _client, _path
 
         _client, _path = client, path
-        body = body or datetime.now().isoformat().encode('utf-8')
+        body = body or datetime.now().isoformat().encode("utf-8")
         out = client.put_object(test_container, path, body=body)
         out.raise_for_status()
 
@@ -83,20 +83,20 @@ def client():
 
 
 tree_data = {
-    'file1': b'file 1 data',
-    'a': {
-        'file1': b'file 1 data - a',
-        'file2': b'file 2 data',
+    "file1": b"file 1 data",
+    "a": {
+        "file1": b"file 1 data - a",
+        "file2": b"file 2 data",
     },
-    'b': {
-        'file1': b'file 1 data - b',
+    "b": {
+        "file1": b"file 1 data - b",
     },
 }
-tree_root = f'/{test_container}/{test_dir}/tree'
-Tree = namedtuple('Tree', 'root data')
+tree_root = f"/{test_container}/{test_dir}/tree"
+Tree = namedtuple("Tree", "root data")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def tree():
     fs = V3ioFS()
     create_tree(fs, tree_root, tree_data)
@@ -110,12 +110,12 @@ def tree():
 def create_tree(fs, prefix, tree):
     fs.mkdir(prefix)
     for name, value in tree.items():
-        path = f'{prefix}/{name}'
+        path = f"{prefix}/{name}"
         if isinstance(value, bytes):
-            with fs.open(path, 'wb') as out:
+            with fs.open(path, "wb") as out:
                 out.write(value)
         elif isinstance(value, dict):
             fs.mkdir(path)
             create_tree(fs, path, value)
         else:
-            raise TypeError(f'unknown value type: {type(value)!r}')
+            raise TypeError(f"unknown value type: {type(value)!r}")

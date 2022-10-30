@@ -13,11 +13,12 @@
 # limitations under the License.
 
 
+import v3io
 from fsspec.spec import AbstractBufferedFile
 from v3io.dataplane import Client
-from .utils import handle_v3io_errors
-import v3io
+
 from .path import split_container
+from .utils import handle_v3io_errors
 
 
 class V3ioFile(AbstractBufferedFile):
@@ -27,13 +28,13 @@ class V3ioFile(AbstractBufferedFile):
         nbytes = end - start
 
         resp = client.get_object(
-            container, path, offset=start, num_bytes=nbytes,
-            raise_for_status=v3io.dataplane.RaiseForStatus.never)
+            container, path, offset=start, num_bytes=nbytes, raise_for_status=v3io.dataplane.RaiseForStatus.never
+        )
 
         return handle_v3io_errors(resp, path)
 
     def _upload_chunk(self, final=False):
-        """ Write one part of a multi-block file upload
+        """Write one part of a multi-block file upload
 
         Parameters
         ----------
@@ -48,7 +49,10 @@ class V3ioFile(AbstractBufferedFile):
         client: Client = self.fs._client
         container, path = split_container(self.path)
         resp = client.put_object(
-            container, path, body=body, append=True,
+            container,
+            path,
+            body=body,
+            append=True,
             raise_for_status=v3io.dataplane.RaiseForStatus.never,
         )
 
@@ -57,5 +61,5 @@ class V3ioFile(AbstractBufferedFile):
             return True
 
     def _initiate_upload(self):
-        """ Create remote file/upload """
+        """Create remote file/upload"""
         self.fs.rm_file(self.path)
