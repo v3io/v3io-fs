@@ -24,9 +24,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -42,8 +42,6 @@ jobs:
         run: make test
       - name: Set version
         run: make set-version
-      - name: Build binary wheel and source tarball
-        run: make dist
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@master
         with:

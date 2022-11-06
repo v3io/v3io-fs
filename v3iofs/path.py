@@ -19,9 +19,9 @@ def strip_schema(url):
     if not url:
         return url
     url = str(url)
-    if '://' in url:
+    if "://" in url:
         url = urlparse(url).path
-    return url.replace('\\', '/')  # fix in windows
+    return url.replace("\\", "/")  # fix in windows
 
 
 def split_container(path):
@@ -32,27 +32,27 @@ def split_container(path):
     """
     path = str(path)  # Might be pathlib.Path
     if not path:
-        raise ValueError('empty path')
-    if path == '/':
-        return '', ''
+        raise ValueError("empty path")
+    if path == "/":
+        return "", ""
 
-    if path[0] == '/':
+    if path[0] == "/":
         path = path[1:]
 
-    if '/' not in path:
-        return path, ''  # container
+    if "/" not in path:
+        return path, ""  # container
 
-    return path.split('/', maxsplit=1)
+    return path.split("/", maxsplit=1)
 
 
 def unslash(s):
     """Remove optional slashes from the start/end."""
-    return s.strip('/')
+    return s.strip("/")
 
 
 def _norm(p):
-    p = re.sub('/+', '/', p)
-    return '/' + p if p[0] != '/' else p
+    p = re.sub("/+", "/", p)
+    return "/" + p if p[0] != "/" else p
 
 
 def path_equal(p1, p2):
