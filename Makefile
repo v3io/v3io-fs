@@ -77,6 +77,10 @@ env:
 dev-env: env
 	pip install -r dev-requirements.txt
 
+.PHONY: dist
+dist: dev-env
+	pipenv run python -m build --sdist --wheel --outdir dist/ .
+
 .PHONY: set-version
 set-version:
 	python set-version.py

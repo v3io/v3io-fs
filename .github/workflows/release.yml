@@ -42,6 +42,8 @@ jobs:
         run: make test
       - name: Set version
         run: make set-version
+      - name: Build binary wheel and source tarball
+        run: make dist
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@master
         with:
