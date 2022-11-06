@@ -79,7 +79,7 @@ dev-env: env
 
 .PHONY: dist
 dist: dev-env
-	pipenv run python -m build --sdist --wheel --outdir dist/ .
+	python -m build --sdist --wheel --outdir dist/ .
 
 .PHONY: set-version
 set-version:
