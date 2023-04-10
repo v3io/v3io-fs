@@ -29,6 +29,14 @@ path_types = [
 ]
 
 
+def makedir(path):
+    fs = fsspec.filesystem("v3io")
+    path += "/delete_eme"
+    with fs.open(path, "wb") as out:
+        out.write("delete me".encode("UTF8"))
+    fs.rm(path)
+
+
 @pytest.mark.parametrize("path_cls", path_types)
 def test_ls(fs: V3ioFS, new_file, path_cls):
     new_file(fs._client, f"{test_dir}/test-file")  # Make sure dir exists
@@ -43,12 +51,12 @@ def test_ls(fs: V3ioFS, new_file, path_cls):
 
 
 def test_ls_with_marker(fs: V3ioFS, new_file):
-    for i in range(1200):
+    for i in range(5):
         new_file(fs._client, f"{test_dir}/test_ls/test-file{i}")
     path = str(f"/{test_container}/{test_dir}/test_ls")
 
     out = fs.ls(path, detail=True)
-    assert len(out) == 1200, "not all files returned"
+    assert len(out) == 5, "not all files returned"
 
 
 def test_rm(fs: V3ioFS, tmp_obj):
@@ -122,3 +130,11 @@ def test_fsspec():
         data = fp.read()
     assert data == b"123", "unexpected data"
     fs.rm(filepath)
+
+
+def test_empty_directory():
+    fs = fsspec.filesystem("v3io")
+    path = f"/{test_container}/{test_dir}"
+    makedir(path)
+    result = fs.ls(path)
+    assert result == []

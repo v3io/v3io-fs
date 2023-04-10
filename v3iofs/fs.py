@@ -119,7 +119,6 @@ class V3ioFS(AbstractFileSystem):
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
 
-        full_path = path
         path = strip_schema(path)
         container, path = split_container(path)
         if not container:
@@ -146,7 +145,7 @@ class V3ioFS(AbstractFileSystem):
                 if not _has_data(resp):
                     return [self._ls_file(container, path, detail)]
                 if not out:
-                    raise FileNotFoundError(f"{full_path!r} not found")
+                    return []
 
             ext_out.extend(out)
             if hasattr(resp.output, "next_marker") and resp.output.next_marker:
