@@ -134,7 +134,27 @@ def test_fsspec():
 
 def test_empty_directory():
     fs = fsspec.filesystem("v3io")
-    path = f"/{test_container}/{test_dir}"
+    path = f"/{test_container}/{test_dir}/test_empty_directory"
     makedir(path)
-    result = fs.ls(path)
-    assert result == []
+    try:
+        result = fs.ls(path)
+        assert result == []
+    finally:
+        fs.rm(path)
+
+
+def test_directory_with_file():
+    fs = fsspec.filesystem("v3io")
+    dir_path = f"/{test_container}/{test_dir}/test_directory_with_file"
+    file_path = f"/{test_container}/{test_dir}/test_directory_with_file/my_file"
+    with fs.open(file_path, "wb") as out:
+        out.write("test file".encode("UTF8"))
+    try:
+        result = fs.ls(dir_path)
+        assert len(result) == 1
+        assert result[0]["name"] == f"/{test_container}/{test_dir}/test_directory_with_file/my_file"
+        assert result[0]["type"] == "file"
+        assert result[0]["size"] == 9
+    finally:
+        fs.rm(file_path)
+        fs.rm(dir_path)
