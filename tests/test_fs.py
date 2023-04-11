@@ -31,7 +31,7 @@ path_types = [
 
 def makedir(path):
     fs = fsspec.filesystem("v3io")
-    path += "/delete_eme"
+    path += "/delete_me"
     with fs.open(path, "wb") as out:
         out.write("delete me".encode("UTF8"))
     fs.rm(path)
@@ -55,7 +55,7 @@ def test_ls_with_marker(fs: V3ioFS, new_file):
         new_file(fs._client, f"{test_dir}/test_ls/test-file{i}")
     path = str(f"/{test_container}/{test_dir}/test_ls")
 
-    out = fs.ls(path, detail=True)
+    out = fs.ls(path, detail=True, limit=3)
     assert len(out) == 5, "not all files returned"
 
 

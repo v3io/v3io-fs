@@ -125,12 +125,15 @@ class V3ioFS(AbstractFileSystem):
             return self._list_containers(detail)
         ext_out = []
 
+        limit = kwargs.get("limit", None)
+
         while True:
             resp = self._client.get_container_contents(
                 container=container,
                 path=path,
                 get_all_attributes=True,
                 raise_for_status=v3io.dataplane.RaiseForStatus.never,
+                limit=limit,
                 marker=marker,
             )
 
