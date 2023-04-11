@@ -24,7 +24,6 @@ def test_fetch_range(fs: V3ioFS, tmp_obj):
     assert expected == data, "bad data"
 
 
-@pytest.mark.skip("This hangs in CI")
 def test_upload_chunk(fs: V3ioFS, tmp_obj):
     v3f = V3ioFile(fs, tmp_obj.path, "ab")
     chunk = b"::chunk of data"
@@ -39,7 +38,6 @@ def test_upload_chunk(fs: V3ioFS, tmp_obj):
     assert expected == data, "bad data"
 
 
-@pytest.mark.skip("This hangs in CI")
 def test_initiate_upload(fs: V3ioFS, tmp_obj):
     fs.touch(tmp_obj.path)
     assert fs.exists(tmp_obj.path)
