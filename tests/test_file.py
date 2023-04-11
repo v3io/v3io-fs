@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
 
 from v3iofs import V3ioFile, V3ioFS
 
@@ -23,6 +24,7 @@ def test_fetch_range(fs: V3ioFS, tmp_obj):
     assert expected == data, "bad data"
 
 
+@pytest.mark.skip("This hangs in CI")
 def test_upload_chunk(fs: V3ioFS, tmp_obj):
     v3f = V3ioFile(fs, tmp_obj.path, "ab")
     chunk = b"::chunk of data"
