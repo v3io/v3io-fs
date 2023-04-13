@@ -195,6 +195,11 @@ class V3ioFS(AbstractFileSystem):
     def copy(self, path1, path2, **kwargs):
         ...  # FIXME
 
+    def rmdir(self, path):
+        if path and not path.endswith("/"):
+            path += "/"
+        self._rm(path)
+
     def _rm(self, path):
         container, path_without_container = split_container(path)
         if not container:

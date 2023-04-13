@@ -140,7 +140,7 @@ def test_empty_directory():
         result = fs.ls(path)
         assert result == []
     finally:
-        fs.rm(path)
+        fs.rmdir(path)
 
 
 def test_directory_with_file():
@@ -157,4 +157,4 @@ def test_directory_with_file():
         assert result[0]["size"] == 9
     finally:
         fs.rm(file_path)
-        fs.rm(dir_path)
+        fs.rmdir(dir_path)
