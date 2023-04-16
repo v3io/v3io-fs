@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import uuid
 from collections import namedtuple
 from datetime import datetime
@@ -32,12 +33,16 @@ Obj = namedtuple("Obj", "path data")
 @pytest.fixture
 def fs():
     print("Creating V3ioFS...")
+    sys.stdout.flush()
     fs = V3ioFS()
     print("Created V3ioFS")
+    sys.stdout.flush()
     yield fs
     print("Closing fs._client")
+    sys.stdout.flush()
     fs._client.close()
     print("Closed fs._client")
+    sys.stdout.flush()
 
 
 @pytest.fixture
