@@ -62,8 +62,12 @@ path_types = [
 #     assert path not in out, "not deleted"
 
 
-def test_touch(fs: V3ioFS, tmp_obj):
-    pass
+def test_touch(tmp_obj):
+    print("Creating V3ioFS...")
+    sys.stdout.flush()
+    fs = V3ioFS()
+    print("Created V3ioFS")
+    sys.stdout.flush()
     # path = tmp_obj.path
     # fs.touch(path)
     # container, path = split_container(path)
