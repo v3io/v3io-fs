@@ -31,9 +31,13 @@ Obj = namedtuple("Obj", "path data")
 
 @pytest.fixture
 def fs():
+    print("Creating V3ioFS...")
     fs = V3ioFS()
+    print("Created V3ioFS")
     yield fs
+    print("Closing fs._client")
     fs._client.close()
+    print("Closed fs._client")
 
 
 @pytest.fixture
