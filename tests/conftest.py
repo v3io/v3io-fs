@@ -28,12 +28,15 @@ test_dir = f"v3io-fs-test-{uuid.uuid4().hex}"
 
 Obj = namedtuple("Obj", "path data")
 
+_v3io_fs_singleton = None
+
 
 @pytest.fixture
 def fs():
-    fs = V3ioFS()
-    yield fs
-    fs._client.close()
+    global _v3io_fs_singleton
+    if not _v3io_fs_singleton:
+        _v3io_fs_singleton = V3ioFS()
+    yield _v3io_fs_singleton
 
 
 @pytest.fixture
