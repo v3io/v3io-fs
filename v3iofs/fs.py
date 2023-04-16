@@ -13,8 +13,7 @@
 # limitations under the License.
 import time
 import traceback
-
-# import weakref
+import weakref
 from datetime import datetime, timezone
 from os import environ
 from threading import Lock
@@ -106,7 +105,7 @@ class V3ioFS(AbstractFileSystem):
     def __init__(self, v3io_api=None, v3io_access_key=None, cache_validity_seconds=None, cache_capacity=None, **kw):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        # self._client = _new_client(v3io_api, v3io_access_key)
+        self._client = _new_client(v3io_api, v3io_access_key)
         self._cache = None
         if cache_validity_seconds is None:
             cache_validity_seconds = 2
@@ -115,7 +114,7 @@ class V3ioFS(AbstractFileSystem):
         if cache_validity_seconds > 0:
             self._cache = _Cache(int(cache_capacity), int(cache_validity_seconds))
             self._cache_lock = Lock()
-        # weakref.finalize(self, lambda: self._client.close())
+        weakref.finalize(self, lambda: self._client.close())
 
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
