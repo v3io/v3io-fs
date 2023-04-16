@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 from datetime import datetime, timezone
 
 # from os.path import basename, dirname
@@ -65,7 +66,7 @@ path_types = [
 def test_touch(tmp_obj):
     print("Creating V3ioFS...")
     sys.stdout.flush()
-    fs = V3ioFS()
+    V3ioFS()
     print("Created V3ioFS")
     sys.stdout.flush()
     # path = tmp_obj.path
