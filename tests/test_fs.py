@@ -11,18 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# from datetime import datetime, timezone
-# from os.path import basename, dirname
+from datetime import datetime, timezone
+from os.path import basename, dirname
 from pathlib import Path
 
-# import fsspec
+import fsspec
 import pytest
 from conftest import test_container, test_dir
 
 from v3iofs import V3ioFS
-
-# from v3iofs.fs import parse_time
-# from v3iofs.path import split_container
+from v3iofs.fs import parse_time
+from v3iofs.path import split_container
 
 path_types = [
     str,
