@@ -29,26 +29,26 @@ path_types = [
 ]
 
 
-# @pytest.mark.parametrize("path_cls", path_types)
-# def test_ls(fs: V3ioFS, new_file, path_cls):
-#     new_file(fs._client, f"{test_dir}/test-file")  # Make sure dir exists
-#     path = path_cls(f"/{test_container}/{test_dir}/")
-#     out = fs.ls(path)
-#     assert len(out) > 0, "nothing found"
-#     assert all(isinstance(p, dict) for p in out), "not dict"
-#
-#     out = fs.ls(path, detail=False)
-#     assert len(out) > 0, "nothing found"
-#     assert all(isinstance(p, str) for p in out), "not string"
-#
-#
-# def test_ls_with_marker(fs: V3ioFS, new_file):
-#     for i in range(1200):
-#         new_file(fs._client, f"{test_dir}/test_ls/test-file{i}")
-#     path = str(f"/{test_container}/{test_dir}/test_ls")
-#
-#     out = fs.ls(path, detail=True)
-#     assert len(out) == 1200, "not all files returned"
+@pytest.mark.parametrize("path_cls", path_types)
+def test_ls(fs: V3ioFS, new_file, path_cls):
+    new_file(fs._client, f"{test_dir}/test-file")  # Make sure dir exists
+    path = path_cls(f"/{test_container}/{test_dir}/")
+    out = fs.ls(path)
+    assert len(out) > 0, "nothing found"
+    assert all(isinstance(p, dict) for p in out), "not dict"
+
+    out = fs.ls(path, detail=False)
+    assert len(out) > 0, "nothing found"
+    assert all(isinstance(p, str) for p in out), "not string"
+
+
+def test_ls_with_marker(fs: V3ioFS, new_file):
+    for i in range(1200):
+        new_file(fs._client, f"{test_dir}/test_ls/test-file{i}")
+    path = str(f"/{test_container}/{test_dir}/test_ls")
+
+    out = fs.ls(path, detail=True)
+    assert len(out) == 1200, "not all files returned"
 
 
 def test_rm(fs: V3ioFS, tmp_obj):
