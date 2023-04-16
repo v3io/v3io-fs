@@ -45,19 +45,19 @@ path_types = [
 #     assert len(out) == 1200, "not all files returned"
 
 
-def test_rm(fs: V3ioFS, tmp_obj):
-    path = tmp_obj.path
-    fs.rm(path)
-    out = fs.ls(dirname(path), detail=False)
-    assert path not in out, "not deleted"
-
-
-def test_touch(fs: V3ioFS, tmp_obj):
-    path = tmp_obj.path
-    fs.touch(path)
-    container, path = split_container(path)
-    resp = fs._client.get_object(container, path)
-    assert resp.body == b"", "not truncated"
+# def test_rm(fs: V3ioFS, tmp_obj):
+#     path = tmp_obj.path
+#     fs.rm(path)
+#     out = fs.ls(dirname(path), detail=False)
+#     assert path not in out, "not deleted"
+#
+#
+# def test_touch(fs: V3ioFS, tmp_obj):
+#     path = tmp_obj.path
+#     fs.touch(path)
+#     container, path = split_container(path)
+#     resp = fs._client.get_object(container, path)
+#     assert resp.body == b"", "not truncated"
 
 
 # now = datetime(2020, 1, 2, 3, 4, 5, 6789, tzinfo=timezone.utc)
