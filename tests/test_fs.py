@@ -11,11 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from os.path import dirname
 from pathlib import Path
-
-from v3iofs import V3ioFS
-from v3iofs.path import split_container
 
 path_types = [
     str,
