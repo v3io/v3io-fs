@@ -1,2 +1,2 @@
 fsspec>=0.6.2
-v3io>=0.4.0
+git+https://github.com/gtopper/v3io-py.git@maybe-fix-v3iofs-ci-hang
