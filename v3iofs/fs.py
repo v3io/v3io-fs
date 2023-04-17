@@ -119,12 +119,13 @@ class V3ioFS(AbstractFileSystem):
     def ls(self, path, detail=True, marker=None, **kwargs):
         """Lists files & directories under path"""
 
-        full_path = path
         path = strip_schema(path)
         container, path = split_container(path)
         if not container:
             return self._list_containers(detail)
         ext_out = []
+
+        limit = kwargs.get("limit", None)
 
         while True:
             resp = self._client.get_container_contents(
@@ -132,6 +133,7 @@ class V3ioFS(AbstractFileSystem):
                 path=path,
                 get_all_attributes=True,
                 raise_for_status=v3io.dataplane.RaiseForStatus.never,
+                limit=limit,
                 marker=marker,
             )
 
@@ -146,7 +148,7 @@ class V3ioFS(AbstractFileSystem):
                 if not _has_data(resp):
                     return [self._ls_file(container, path, detail)]
                 if not out:
-                    raise FileNotFoundError(f"{full_path!r} not found")
+                    return []
 
             ext_out.extend(out)
             if hasattr(resp.output, "next_marker") and resp.output.next_marker:
@@ -192,6 +194,11 @@ class V3ioFS(AbstractFileSystem):
 
     def copy(self, path1, path2, **kwargs):
         ...  # FIXME
+
+    def rmdir(self, path):
+        if path and not path.endswith("/"):
+            path += "/"
+        self._rm(path)
 
     def _rm(self, path):
         container, path_without_container = split_container(path)
