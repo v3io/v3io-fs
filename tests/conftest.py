@@ -28,17 +28,10 @@ test_dir = f"v3io-fs-test-{uuid.uuid4().hex}"
 
 Obj = namedtuple("Obj", "path data")
 
-# Use a singleton to avoid hang on fs._client.close()
-# This only happens in GitHub actions CI for an unknown reason
-_v3io_fs_singleton = None
-
 
 @pytest.fixture
 def fs():
-    global _v3io_fs_singleton
-    if not _v3io_fs_singleton:
-        _v3io_fs_singleton = V3ioFS()
-    yield _v3io_fs_singleton
+    yield V3ioFS()
 
 
 @pytest.fixture
