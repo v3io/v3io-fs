@@ -37,6 +37,22 @@ def test_upload_chunk(fs: V3ioFS, tmp_obj):
     assert expected == data, "bad data"
 
 
+def test_write_truncate_and_append(fs: V3ioFS, tmp_obj):
+    with V3ioFile(fs, tmp_obj.path, "wb") as v3f:
+        v3f.write(b"123")
+
+    with fs.open(tmp_obj.path, "rb") as fp:
+        data = fp.read()
+    assert data == b"123"
+
+    with V3ioFile(fs, tmp_obj.path, "ab") as v3f:
+        v3f.write(b"456")
+
+    with fs.open(tmp_obj.path, "rb") as fp:
+        data = fp.read()
+    assert data == b"123456"
+
+
 def test_initiate_upload(fs: V3ioFS, tmp_obj):
     fs.touch(tmp_obj.path)
     assert fs.exists(tmp_obj.path)

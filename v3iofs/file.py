@@ -62,4 +62,5 @@ class V3ioFile(AbstractBufferedFile):
 
     def _initiate_upload(self):
         """Create remote file/upload"""
-        self.fs.rm_file(self.path)
+        if "a" not in self.mode:
+            self.fs.rm_file(self.path)
