@@ -96,16 +96,20 @@ class V3ioFS(AbstractFileSystem):
     cache_capacity: int | str | None
         limits the size of the cache. If cache_validity_seconds is not set, this parameter has no effect.
         Default is 128.
+    debug: bool
+        Turn on transport debug logs. Default is False.
     **kw:
         Passed to fsspec.AbstractFileSystem
     """
 
     protocol = "v3io"
 
-    def __init__(self, v3io_api=None, v3io_access_key=None, cache_validity_seconds=None, cache_capacity=None, **kw):
+    def __init__(
+        self, v3io_api=None, v3io_access_key=None, cache_validity_seconds=None, cache_capacity=None, debug=False, **kw
+    ):
         # TODO: Support storage options for creds (in kw)
         super().__init__(**kw)
-        self._client = _new_client(v3io_api, v3io_access_key)
+        self._client = _new_client(v3io_api, v3io_access_key, debug)
         self._cache = None
         if cache_validity_seconds is None:
             cache_validity_seconds = 2
@@ -338,6 +342,8 @@ class V3ioFS(AbstractFileSystem):
         cache_options=None,
         **kw,
     ):
+        if mode != "rb":
+            self._cache.delete_if_exists(path)
         return V3ioFile(
             fs=self,
             path=path,
@@ -450,11 +456,17 @@ def _has_data(resp):
     return hasattr(out, "common_prefixes") or hasattr(out, "contents")
 
 
-def _new_client(v3io_api=None, v3io_access_key=None) -> Client:
+def _new_client(v3io_api=None, v3io_access_key=None, debug=False) -> Client:
     v3io_api = v3io_api or environ.get("V3IO_API")
     v3io_access_key = v3io_access_key or environ.get("V3IO_ACCESS_KEY")
+
+    client_kwargs = {}
+    if debug:
+        client_kwargs["logger_verbosity"] = "DEBUG"
+        client_kwargs["transport_verbosity"] = "DEBUG"
 
     return Client(
         endpoint=v3io_api,
         access_key=v3io_access_key,
+        **client_kwargs,
     )
