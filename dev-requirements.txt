@@ -1,6 +1,7 @@
 black~=22.0
 build~=0.1.0
 dask[complete]>=2021.10.0
+numpy<2
 flake8~=5.0
 flake8-bugbear~=22.9
 isort~=5.7
