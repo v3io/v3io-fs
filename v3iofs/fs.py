@@ -196,8 +196,7 @@ class V3ioFS(AbstractFileSystem):
         fn = container_info if detail else container_path
         return [fn(c) for c in resp.output.containers]
 
-    def copy(self, path1, path2, **kwargs):
-        ...  # FIXME
+    def copy(self, path1, path2, **kwargs): ...  # FIXME
 
     def rmdir(self, path):
         if path and not path.endswith("/"):
