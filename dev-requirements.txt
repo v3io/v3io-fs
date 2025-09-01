@@ -1,4 +1,4 @@
-black~=22.0
+black~=25.1
 build~=0.1.0
 dask[complete]>=2021.10.0
 numpy<2
